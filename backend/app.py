@@ -104,6 +104,18 @@ def init_db():
         )
     ''')
     
+    # Hero images table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS hero_images (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            filename TEXT NOT NULL,
+            original_name TEXT,
+            alt_text TEXT,
+            display_order INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
     # Initialize default home content
     default_content = {
         'company_description': 'S-Steel Construction is a leading provider of steel construction services with over 15 years of experience in delivering high-quality projects.',
@@ -203,7 +215,13 @@ def get_projects():
         projects_list = []
         for project in projects:
             project_dict = dict(project)
-            project_dict['image'] = project_dict['main_image']
+            # Convert relative path to full URL
+            if project_dict['main_image']:
+                project_dict['image'] = f"http://localhost:5001/uploads/{project_dict['main_image']}"
+                project_dict['main_image'] = f"http://localhost:5001/uploads/{project_dict['main_image']}"
+            else:
+                project_dict['image'] = None
+                project_dict['main_image'] = None
             projects_list.append(project_dict)
         
         return jsonify(projects_list)
@@ -235,7 +253,22 @@ def get_project(project_id):
         conn.close()
         
         project_dict = dict(project)
-        project_dict['images'] = [dict(img) for img in images]
+        
+        # Convert image paths to full URLs and add main image URL
+        images_with_urls = []
+        main_image_url = None
+        
+        for img in images:
+            img_dict = dict(img)
+            img_dict['url'] = f"http://localhost:5001/uploads/{img_dict['image_path']}"
+            images_with_urls.append(img_dict)
+            
+            # Set main image URL
+            if img_dict['is_main']:
+                main_image_url = img_dict['url']
+        
+        project_dict['images'] = images_with_urls
+        project_dict['main_image'] = main_image_url
         
         return jsonify(project_dict)
         
@@ -276,11 +309,87 @@ def create_project():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/admin/projects/<int:project_id>', methods=['PUT'])
+@jwt_required()
+def update_project(project_id):
+    """Update an existing project"""
+    try:
+        data = request.get_json()
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            UPDATE projects 
+            SET title = ?, description = ?, category = ?, location = ?, size = ?, year = ?, featured = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ''', (
+            data.get('title'),
+            data.get('description'),
+            data.get('category'),
+            data.get('location'),
+            data.get('size'),
+            data.get('year'),
+            data.get('featured', False),
+            project_id
+        ))
+        
+        if cursor.rowcount == 0:
+            conn.close()
+            return jsonify({'error': 'Project not found'}), 404
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'message': 'Project updated successfully'}), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/projects/<int:project_id>', methods=['DELETE'])
+@jwt_required()
+def delete_project(project_id):
+    """Delete a project and all its associated images"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Get all images for this project
+        cursor.execute('SELECT image_path FROM project_images WHERE project_id = ?', (project_id,))
+        images = cursor.fetchall()
+        
+        # Delete all project images from filesystem
+        for image in images:
+            try:
+                file_path = os.path.join(app.config['UPLOAD_FOLDER'], image[0])
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+            except Exception as e:
+                print(f"Warning: Could not delete file {image[0]}: {e}")
+        
+        # Delete project images from database
+        cursor.execute('DELETE FROM project_images WHERE project_id = ?', (project_id,))
+        
+        # Delete project
+        cursor.execute('DELETE FROM projects WHERE id = ?', (project_id,))
+        
+        if cursor.rowcount == 0:
+            conn.rollback()
+            conn.close()
+            return jsonify({'error': 'Project not found'}), 404
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'message': 'Project deleted successfully'}), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/admin/projects/<int:project_id>/upload', methods=['POST'])
 @jwt_required()
-def upload_project_images():
+def upload_project_images(project_id):
     try:
-        project_id = request.view_args['project_id']
         
         if 'files' not in request.files:
             return jsonify({'error': 'No files uploaded'}), 400
@@ -291,6 +400,15 @@ def upload_project_images():
         uploaded_files = []
         conn = get_db_connection()
         cursor = conn.cursor()
+        
+        # Check if project has any existing main image
+        existing_main = cursor.execute(
+            'SELECT COUNT(*) FROM project_images WHERE project_id = ? AND is_main = 1',
+            (project_id,)
+        ).fetchone()[0]
+        
+        has_main_image = existing_main > 0
+        first_upload = True  # Track if this is the first file being uploaded
         
         for file in files:
             if file and file.filename and allowed_file(file.filename):
@@ -311,17 +429,26 @@ def upload_project_images():
                 except Exception as e:
                     print(f"Image optimization failed: {e}")
                 
+                # Determine if this should be the main image
+                should_be_main = is_main or (not has_main_image and first_upload)
+                
                 # Save to database
                 cursor.execute('''
                     INSERT INTO project_images (project_id, image_path, image_name, is_main)
                     VALUES (?, ?, ?, ?)
-                ''', (project_id, f"projects/{filename}", file.filename, is_main))
+                ''', (project_id, f"projects/{filename}", file.filename, should_be_main))
                 
                 uploaded_files.append({
                     'filename': filename,
                     'original_name': file.filename,
-                    'path': f"projects/{filename}"
+                    'path': f"projects/{filename}",
+                    'is_main': should_be_main
                 })
+                
+                # After setting the first image as main, don't set subsequent ones as main
+                if should_be_main:
+                    has_main_image = True
+                first_upload = False
         
         conn.commit()
         conn.close()
@@ -330,6 +457,103 @@ def upload_project_images():
             'message': f'{len(uploaded_files)} files uploaded successfully',
             'files': uploaded_files
         })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/projects/<int:project_id>/images', methods=['GET'])
+@jwt_required()
+def get_project_images(project_id):
+    """Get all images for a specific project"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT id, image_path, image_name, is_main, created_at
+            FROM project_images 
+            WHERE project_id = ? 
+            ORDER BY is_main DESC, created_at
+        ''', (project_id,))
+        
+        images = cursor.fetchall()
+        conn.close()
+        
+        image_list = []
+        for img in images:
+            image_list.append({
+                'id': img[0],
+                'url': f"http://localhost:5001/uploads/{img[1]}",
+                'path': img[1],
+                'name': img[2],
+                'is_main': bool(img[3]),
+                'created_at': img[4]
+            })
+        
+        return jsonify({'images': image_list})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/projects/<int:project_id>/images/<int:image_id>', methods=['DELETE'])
+@jwt_required()
+def delete_project_image(project_id, image_id):
+    """Delete a specific project image"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Get image path before deleting
+        cursor.execute('SELECT image_path FROM project_images WHERE id = ? AND project_id = ?', 
+                      (image_id, project_id))
+        image = cursor.fetchone()
+        
+        if not image:
+            return jsonify({'error': 'Image not found'}), 404
+        
+        # Delete from database
+        cursor.execute('DELETE FROM project_images WHERE id = ? AND project_id = ?', 
+                      (image_id, project_id))
+        conn.commit()
+        conn.close()
+        
+        # Delete file from filesystem
+        try:
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], image[0])
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        except Exception as e:
+            print(f"Warning: Could not delete file {image[0]}: {e}")
+        
+        return jsonify({'message': 'Image deleted successfully'})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/projects/<int:project_id>/images/<int:image_id>/main', methods=['PUT'])
+@jwt_required()
+def set_main_project_image(project_id, image_id):
+    """Set an image as the main image for a project"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # First, unset all main images for this project
+        cursor.execute('UPDATE project_images SET is_main = 0 WHERE project_id = ?', (project_id,))
+        
+        # Set the specified image as main
+        cursor.execute('UPDATE project_images SET is_main = 1 WHERE id = ? AND project_id = ?', 
+                      (image_id, project_id))
+        
+        if cursor.rowcount == 0:
+            conn.rollback()
+            conn.close()
+            return jsonify({'error': 'Image not found'}), 404
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'message': 'Main image updated successfully'})
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -409,6 +633,57 @@ def placeholder_image(width, height):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# Public Home Content Route (no authentication required)
+@app.route('/api/home-content', methods=['GET'])
+def get_public_home_content():
+    """Get home content for public website"""
+    try:
+        conn = get_db_connection()
+        
+        # Get all home content from database
+        content = {}
+        rows = conn.execute('SELECT content_key, content_value FROM home_content').fetchall()
+        for row in rows:
+            content[row['content_key']] = row['content_value']
+        
+        # Get hero images from database
+        hero_images = []
+        image_rows = conn.execute(
+            'SELECT id, filename, alt_text FROM hero_images ORDER BY display_order, created_at'
+        ).fetchall()
+        
+        for row in image_rows:
+            hero_images.append({
+                'id': row['id'],
+                'url': f'http://localhost:5001/uploads/gallery/{row["filename"]}',
+                'alt': row['alt_text'] or f'Hero Image {row["id"]}'
+            })
+        
+        # If no uploaded images, show placeholders
+        if not hero_images:
+            hero_images = [
+                {'id': 1, 'url': '/api/placeholder/800/600', 'alt': 'Steel Construction Project 1'},
+                {'id': 2, 'url': '/api/placeholder/800/600', 'alt': 'Steel Construction Project 2'},
+                {'id': 3, 'url': '/api/placeholder/800/600', 'alt': 'Steel Construction Project 3'}
+            ]
+        
+        conn.close()
+        
+        # Format data for frontend
+        home_data = {
+            'heroImages': hero_images,
+            'companyDescription': content.get('company_description', 'S-Steel Construction is a leading provider of steel construction services.'),
+            'stats': {
+                'yearsExperience': int(content.get('years_experience', 15)),
+                'projectsCompleted': int(content.get('projects_completed', 500)),
+                'teamMembers': int(content.get('team_members', 50)),
+                'clientSatisfaction': int(content.get('client_satisfaction', 99))
+            }
+        }
+        return jsonify(home_data)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 # Home Content Management Routes
 @app.route('/api/admin/home-content', methods=['GET'])
 @jwt_required()
@@ -422,15 +697,32 @@ def get_home_content():
         for row in rows:
             content[row['content_key']] = row['content_value']
         
+        # Get hero images from database
+        hero_images = []
+        image_rows = conn.execute(
+            'SELECT id, filename, alt_text FROM hero_images ORDER BY display_order, created_at'
+        ).fetchall()
+        
+        for row in image_rows:
+            hero_images.append({
+                'id': row['id'],
+                'url': f'http://localhost:5001/uploads/gallery/{row["filename"]}',
+                'alt': row['alt_text'] or f'Hero Image {row["id"]}'
+            })
+        
+        # If no uploaded images, show placeholders
+        if not hero_images:
+            hero_images = [
+                {'id': 1, 'url': '/api/placeholder/800/600', 'alt': 'Steel Construction Project 1'},
+                {'id': 2, 'url': '/api/placeholder/800/600', 'alt': 'Steel Construction Project 2'},
+                {'id': 3, 'url': '/api/placeholder/800/600', 'alt': 'Steel Construction Project 3'}
+            ]
+        
         conn.close()
         
         # Format data for frontend
         home_data = {
-            'heroImages': [
-                {'id': 1, 'url': '/api/placeholder/800/600', 'alt': 'Steel Construction Project 1'},
-                {'id': 2, 'url': '/api/placeholder/800/600', 'alt': 'Steel Construction Project 2'},
-                {'id': 3, 'url': '/api/placeholder/800/600', 'alt': 'Steel Construction Project 3'}
-            ],
+            'heroImages': hero_images,
             'companyDescription': content.get('company_description', 'S-Steel Construction is a leading provider of steel construction services.'),
             'stats': {
                 'yearsExperience': int(content.get('years_experience', 15)),
@@ -512,27 +804,104 @@ def update_stats():
 
 @app.route('/api/admin/home-content/images', methods=['POST'])
 @jwt_required()
-def upload_hero_image():
+def upload_hero_images():
     try:
-        if 'image' not in request.files:
-            return jsonify({'error': 'No image file provided'}), 400
-            
-        file = request.files['image']
-        if file.filename == '':
-            return jsonify({'error': 'No file selected'}), 400
+        uploaded_images = []
         
-        # In a real app, handle file upload and save to database
-        # For now, just return success
+        # Check for both 'image' (single) and 'images' (multiple) fields
+        files = []
+        if 'images' in request.files:
+            files = request.files.getlist('images')
+        elif 'image' in request.files:
+            files = [request.files['image']]
+        
+        if not files:
+            return jsonify({'error': 'No image files provided'}), 400
+        
+        for file in files:
+            if file and file.filename != '' and allowed_file(file.filename):
+                # Generate unique filename
+                filename = secure_filename(file.filename)
+                unique_filename = f"{uuid.uuid4().hex}_{filename}"
+                
+                # Ensure gallery directory exists
+                gallery_path = os.path.join(UPLOAD_FOLDER, 'gallery')
+                os.makedirs(gallery_path, exist_ok=True)
+                
+                # Save file
+                file_path = os.path.join(gallery_path, unique_filename)
+                file.save(file_path)
+                
+                # Save to database
+                conn = get_db_connection()
+                cursor = conn.cursor()
+                cursor.execute(
+                    "INSERT INTO hero_images (filename, original_name, alt_text, display_order) VALUES (?, ?, ?, ?)",
+                    (unique_filename, file.filename, f'Hero Image {len(uploaded_images) + 1}', len(uploaded_images))
+                )
+                image_id = cursor.lastrowid
+                conn.commit()
+                conn.close()
+                
+                # Add to uploaded images list
+                image_data = {
+                    'id': image_id,
+                    'url': f'http://localhost:5001/uploads/gallery/{unique_filename}',
+                    'alt': f'Hero Image {len(uploaded_images) + 1}',
+                    'filename': unique_filename
+                }
+                uploaded_images.append(image_data)
+        
+        if not uploaded_images:
+            return jsonify({'error': 'No valid image files were uploaded'}), 400
+        
         return jsonify({
-            'message': 'Image uploaded successfully',
-            'image': {
-                'id': 4,
-                'url': '/api/placeholder/800/600',
-                'alt': 'New Hero Image'
-            }
+            'message': f'{len(uploaded_images)} image(s) uploaded successfully',
+            'images': uploaded_images
         })
+        
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+# Delete hero image endpoint
+@app.route('/api/admin/home-content/images/<int:image_id>', methods=['DELETE'])
+@jwt_required()
+def delete_hero_image(image_id):
+    try:
+        conn = get_db_connection()
+        
+        # Get the filename before deleting
+        image = conn.execute(
+            'SELECT filename FROM hero_images WHERE id = ?', (image_id,)
+        ).fetchone()
+        
+        if not image:
+            conn.close()
+            return jsonify({'error': 'Image not found'}), 404
+        
+        # Delete from database
+        conn.execute('DELETE FROM hero_images WHERE id = ?', (image_id,))
+        conn.commit()
+        conn.close()
+        
+        # Delete physical file
+        try:
+            file_path = os.path.join(UPLOAD_FOLDER, 'gallery', image['filename'])
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        except Exception as e:
+            print(f"Warning: Could not delete file {image['filename']}: {e}")
+        
+        return jsonify({'message': 'Image deleted successfully'})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Route to serve uploaded files
+@app.route('/uploads/<path:filename>')
+def serve_upload(filename):
+    """Serve uploaded files"""
+    return send_from_directory(UPLOAD_FOLDER, filename)
 
 # Initialize database on startup
 if __name__ == '__main__':

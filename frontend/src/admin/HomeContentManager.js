@@ -65,14 +65,22 @@ const HomeContentManager = () => {
 
   const handleImageUpload = async (event) => {
     const files = Array.from(event.target.files);
-    if (files.length === 0) return;
+    console.log('Selected files:', files.length, files);
+    
+    if (files.length === 0) {
+      console.log('No files selected');
+      return;
+    }
 
     setUploading(true);
     const formData = new FormData();
     
-    files.forEach(file => {
+    files.forEach((file, index) => {
+      console.log(`Adding file ${index}:`, file.name, file.size, file.type);
       formData.append('images', file);
     });
+
+    console.log('FormData created, sending request...');
 
     try {
       const response = await fetch('/api/admin/home-content/images', {
@@ -83,15 +91,22 @@ const HomeContentManager = () => {
         body: formData
       });
 
+      console.log('Response received:', response.status);
+
       if (response.ok) {
-        const newImages = await response.json();
+        const result = await response.json();
+        console.log('Upload successful:', result);
+        const newImages = result.images || []; // Handle array response
         setHomeData(prev => ({
           ...prev,
           heroImages: [...prev.heroImages, ...newImages]
         }));
-        toast.success('Images uploaded successfully');
+        toast.success(result.message || 'Images uploaded successfully');
+        fetchHomeData(); // Refresh data to get updated hero images
       } else {
-        toast.error('Failed to upload images');
+        const error = await response.json();
+        console.error('Upload failed:', error);
+        toast.error(error.error || 'Failed to upload images');
       }
     } catch (error) {
       console.error('Error uploading images:', error);

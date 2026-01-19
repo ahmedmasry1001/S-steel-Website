@@ -1,376 +1,337 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { PaginationControls } from '../components/MainLayout';
 import {
-  UserGroupIcon,
-  TrophyIcon,
-  ClockIcon,
-  ShieldCheckIcon,
-  CogIcon
+  SparklesIcon,
+  PlayIcon,
+  HeartIcon,
+  ShareIcon,
+  CheckBadgeIcon
 } from '@heroicons/react/24/outline';
 
 const About = () => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 12;
+
+  // Modern 3D stats with Instagram-style design
   const stats = [
-    { number: '15+', label: 'Years in Business' },
-    { number: '500+', label: 'Projects Completed' },
-    { number: '50+', label: 'Expert Team Members' },
-    { number: '10+', label: 'Countries Served' }
-  ];
-
-  const values = [
-    {
-      icon: ShieldCheckIcon,
-      title: 'Quality Excellence',
-      description: 'We maintain the highest standards of quality in every project, ensuring structural integrity and longevity.'
+    { 
+      number: '25+', 
+      label: 'Years Experience', 
+      emoji: '⏰',
+      gradient: 'from-blue-500 to-purple-600',
+      shadow: 'shadow-blue-500/25'
     },
-    {
-      icon: ClockIcon,
-      title: 'Timely Delivery',
-      description: 'Our efficient project management ensures on-time completion without compromising on quality.'
+    { 
+      number: '500+', 
+      label: 'Projects Delivered', 
+      emoji: '🏗️',
+      gradient: 'from-emerald-500 to-teal-600',
+      shadow: 'shadow-emerald-500/25'
     },
-    {
-      icon: UserGroupIcon,
-      title: 'Expert Team',
-      description: 'Our skilled engineers and craftsmen bring decades of experience to every project.'
+    { 
+      number: '200+', 
+      label: 'Happy Clients', 
+      emoji: '😊',
+      gradient: 'from-orange-500 to-red-600',
+      shadow: 'shadow-orange-500/25'
     },
-    {
-      icon: CogIcon,
-      title: 'Innovation',
-      description: 'We embrace cutting-edge technology and innovative solutions for complex construction challenges.'
+    { 
+      number: '100%', 
+      label: 'Safety Rating', 
+      emoji: '🛡️',
+      gradient: 'from-green-500 to-emerald-600',
+      shadow: 'shadow-green-500/25'
     }
   ];
 
-  const team = [
+  // Modern team members with social media style
+  const teamMembers = [
     {
-      name: 'Ahmed Masry',
-      position: 'Founder & CEO',
-      description: 'With over 20 years of experience in steel construction, Ahmed leads our company with vision and expertise.',
-      image: '/api/placeholder/300/300'
-    },
-    {
+      id: 1,
       name: 'Sarah Johnson',
-      position: 'Chief Engineer',
-      description: 'Sarah oversees all engineering projects with her extensive background in structural design.',
-      image: '/api/placeholder/300/300'
+      role: 'Chief Engineer',
+      avatar: '👩‍💼',
+      experience: '15 years',
+      specialty: 'Structural Design',
+      gradient: 'from-blue-500 to-purple-600',
+      verified: true
     },
     {
+      id: 2,
       name: 'Michael Chen',
-      position: 'Project Manager',
-      description: 'Michael ensures all projects are completed on time and within budget with his meticulous planning.',
-      image: '/api/placeholder/300/300'
+      role: 'Project Manager',
+      avatar: '👨‍💼',
+      experience: '12 years',
+      specialty: 'Project Coordination',
+      gradient: 'from-emerald-500 to-teal-600',
+      verified: true
     },
     {
-      name: 'Lisa Rodriguez',
-      position: 'Quality Assurance Director',
-      description: 'Lisa maintains our high quality standards through rigorous testing and inspection processes.',
-      image: '/api/placeholder/300/300'
+      id: 3,
+      name: 'David Rodriguez',
+      role: 'Senior Welder',
+      avatar: '👨‍🔧',
+      experience: '18 years',
+      specialty: 'Steel Fabrication',
+      gradient: 'from-orange-500 to-red-600',
+      verified: true
+    },
+    {
+      id: 4,
+      name: 'Emma Wilson',
+      role: 'Safety Coordinator',
+      avatar: '👩‍🔧',
+      experience: '10 years',
+      specialty: 'Safety Management',
+      gradient: 'from-violet-500 to-purple-600',
+      verified: true
+    },
+    {
+      id: 5,
+      name: 'James Thompson',
+      role: 'Quality Inspector',
+      avatar: '👨‍🔬',
+      experience: '14 years',
+      specialty: 'Quality Control',
+      gradient: 'from-green-500 to-emerald-600',
+      verified: true
+    },
+    {
+      id: 6,
+      name: 'Lisa Park',
+      role: 'Design Specialist',
+      avatar: '👩‍🎨',
+      experience: '11 years',
+      specialty: 'CAD Design',
+      gradient: 'from-pink-500 to-rose-600',
+      verified: true
+    },
+    {
+      id: 7,
+      name: 'Robert Kim',
+      role: 'Site Supervisor',
+      avatar: '👨‍🏭',
+      experience: '16 years',
+      specialty: 'Site Management',
+      gradient: 'from-yellow-500 to-orange-600',
+      verified: true
+    },
+    {
+      id: 8,
+      name: 'Maria Garcia',
+      role: 'Construction Manager',
+      avatar: '👩‍🏭',
+      experience: '13 years',
+      specialty: 'Construction Planning',
+      gradient: 'from-indigo-500 to-blue-600',
+      verified: true
+    },
+    {
+      id: 9,
+      name: 'Alex Johnson',
+      role: 'Steel Fabricator',
+      avatar: '👨‍🔧',
+      experience: '9 years',
+      specialty: 'Metal Working',
+      gradient: 'from-teal-500 to-cyan-600',
+      verified: false
+    },
+    {
+      id: 10,
+      name: 'Jennifer Lee',
+      role: 'Engineering Assistant',
+      avatar: '👩‍💼',
+      experience: '7 years',
+      specialty: 'Technical Support',
+      gradient: 'from-purple-500 to-pink-600',
+      verified: false
+    },
+    {
+      id: 11,
+      name: 'Mark Davis',
+      role: 'Crane Operator',
+      avatar: '👨‍🏭',
+      experience: '20 years',
+      specialty: 'Heavy Machinery',
+      gradient: 'from-red-500 to-pink-600',
+      verified: true
+    },
+    {
+      id: 12,
+      name: 'Rachel Brown',
+      role: 'Quality Analyst',
+      avatar: '👩‍🔬',
+      experience: '8 years',
+      specialty: 'Quality Analysis',
+      gradient: 'from-cyan-500 to-blue-600',
+      verified: false
     }
   ];
 
-  const milestones = [
-    {
-      year: '2010',
-      title: 'Company Founded',
-      description: 'S-Steel Construction was established with a vision to provide quality steel construction solutions.'
-    },
-    {
-      year: '2013',
-      title: 'First Major Project',
-      description: 'Completed our first large-scale commercial building project, establishing our reputation in the industry.'
-    },
-    {
-      year: '2016',
-      title: 'International Expansion',
-      description: 'Expanded operations internationally, taking on projects in multiple countries.'
-    },
-    {
-      year: '2019',
-      title: 'Technology Integration',
-      description: 'Integrated advanced BIM and 3D modeling technologies into our design process.'
-    },
-    {
-      year: '2022',
-      title: 'Sustainability Focus',
-      description: 'Launched our green construction initiative focusing on sustainable building practices.'
-    },
-    {
-      year: '2025',
-      title: 'Innovation Center',
-      description: 'Opened our state-of-the-art innovation center for R&D in steel construction technologies.'
-    }
-  ];
+  // Get paginated team members
+  const getPaginatedTeam = () => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return teamMembers.slice(startIndex, endIndex);
+  };
+
+  const TeamCard = ({ member, index }) => (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, delay: index * 0.05 }}
+      className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 border border-gray-100 overflow-hidden group"
+    >
+      {/* Profile Header */}
+      <div className={`relative h-16 bg-gradient-to-br ${member.gradient} p-3`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center">
+              <span className="text-lg">{member.avatar}</span>
+            </div>
+            {member.verified && (
+              <CheckBadgeIcon className="h-4 w-4 text-white" />
+            )}
+          </div>
+          <div className="flex items-center space-x-1">
+            <HeartIcon className="h-4 w-4 text-white/70 hover:text-white transition-colors cursor-pointer" />
+            <ShareIcon className="h-4 w-4 text-white/70 hover:text-white transition-colors cursor-pointer" />
+          </div>
+        </div>
+      </div>
+
+      {/* Profile Content */}
+      <div className="p-4">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="font-bold text-gray-900 text-sm">{member.name}</h3>
+          <div className="text-xs text-gray-400">•••</div>
+        </div>
+        
+        <div className="space-y-1 mb-3">
+          <div className="text-xs font-medium text-gray-600">{member.role}</div>
+          <div className="text-xs text-gray-500">{member.specialty}</div>
+        </div>
+        
+        <div className="flex items-center justify-between">
+          <div className="text-xs text-gray-500">{member.experience}</div>
+          <div className={`w-2 h-2 rounded-full bg-gradient-to-r ${member.gradient}`}></div>
+        </div>
+      </div>
+    </motion.div>
+  );
 
   return (
-    <div className="about-page">
-      {/* Header */}
-      <section className="bg-gradient-to-r from-dark-gray to-steel-gray text-white py-16">
-        <div className="container">
-          <motion.div
-            className="text-center space-y-4"
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-          >
-            <h1 className="text-4xl md:text-5xl font-bold">
-              About S-Steel Construction
+    <div className="h-full flex flex-col space-y-4 overflow-hidden">
+      {/* Modern Hero Section - Social Media Style */}
+      <div className="relative bg-gradient-to-br from-indigo-50 via-white to-cyan-50 rounded-2xl p-6 border border-gray-100 shadow-xl">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-400/20 to-purple-600/20 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-br from-emerald-400/20 to-teal-600/20 rounded-full blur-2xl"></div>
+        
+        <div className="relative">
+          <div className="flex items-center space-x-3 mb-3">
+            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center shadow-lg">
+              <span className="text-white text-lg">👥</span>
+            </div>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+              Meet Our Expert Team
             </h1>
-            <p className="text-xl text-gray-200 max-w-3xl mx-auto">
-              Building the future with steel excellence since 2010. We are committed 
-              to delivering innovative, sustainable, and high-quality steel construction solutions.
-            </p>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Company Story */}
-      <section className="section">
-        <div className="container">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <motion.div
-              initial={{ opacity: 0, x: -50 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8 }}
+          </div>
+          
+          <p className="text-gray-600 text-sm mb-4 max-w-2xl">
+            Experienced professionals delivering premium steel construction services with 25+ years of industry expertise.
+          </p>
+          
+          <div className="flex items-center space-x-3">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-2.5 rounded-xl font-medium text-sm shadow-lg transition-all duration-200 flex items-center space-x-2"
             >
-              <h2 className="text-4xl font-bold text-dark-gray mb-6">
-                Our Story
-              </h2>
-              <div className="space-y-4 text-steel-gray text-lg">
-                <p>
-                  Founded in 2010, S-Steel Construction has grown from a small local 
-                  contractor to a leading steel construction company serving clients 
-                  across multiple countries. Our journey began with a simple mission: 
-                  to provide exceptional steel construction services that combine 
-                  traditional craftsmanship with modern innovation.
-                </p>
-                <p>
-                  Over the years, we have built a reputation for excellence, completing 
-                  hundreds of projects ranging from small residential structures to 
-                  large-scale commercial and industrial facilities. Our commitment to 
-                  quality, safety, and customer satisfaction has made us a trusted 
-                  partner for clients worldwide.
-                </p>
-                <p>
-                  Today, we continue to push the boundaries of what's possible in 
-                  steel construction, embracing new technologies and sustainable 
-                  practices to create structures that will stand the test of time.
-                </p>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, x: 50 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.8 }}
-              className="grid grid-cols-2 gap-4"
-            >
-              {stats.map((stat, index) => (
-                <div key={stat.label} className="card text-center">
-                  <div className="text-3xl font-bold text-primary-blue mb-2">
-                    {stat.number}
-                  </div>
-                  <div className="text-steel-gray">{stat.label}</div>
-                </div>
-              ))}
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* Values */}
-      <section className="section-light">
-        <div className="container">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-dark-gray mb-4">
-              Our Core Values
-            </h2>
-            <p className="text-lg text-steel-gray max-w-2xl mx-auto">
-              These values guide everything we do and shape our approach to 
-              every project we undertake.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {values.map((value, index) => (
-              <motion.div
-                key={value.title}
-                className="card text-center"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-              >
-                <div className="w-16 h-16 bg-gradient-to-br from-industrial-orange to-industrial-orange-light rounded-full flex items-center justify-center mx-auto mb-6 shadow-md">
-                  <value.icon className="h-6 w-6 text-white" />
-                </div>
-                <h3 className="text-xl font-semibold text-dark-gray mb-3">
-                  {value.title}
-                </h3>
-                <p className="text-steel-gray">
-                  {value.description}
-                </p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Timeline */}
-      <section className="section">
-        <div className="container">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-dark-gray mb-4">
-              Our Journey
-            </h2>
-            <p className="text-lg text-steel-gray max-w-2xl mx-auto">
-              Key milestones that have shaped S-Steel Construction into 
-              the company we are today.
-            </p>
-          </div>
-
-          <div className="relative">
-            {/* Timeline line */}
-            <div className="absolute left-4 md:left-1/2 transform md:-translate-x-px h-full w-0.5 bg-primary-blue"></div>
+              <SparklesIcon className="h-4 w-4" />
+              <span>Join Our Team</span>
+            </motion.button>
             
-            <div className="space-y-8">
-              {milestones.map((milestone, index) => (
-                <motion.div
-                  key={milestone.year}
-                  className={`relative flex items-center ${
-                    index % 2 === 0 ? 'md:flex-row' : 'md:flex-row-reverse'
-                  }`}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                >
-                  {/* Timeline dot */}
-                  <div className="absolute left-4 md:left-1/2 transform md:-translate-x-1/2 w-4 h-4 bg-primary-blue rounded-full border-4 border-white shadow-lg"></div>
-                  
-                  {/* Content */}
-                  <div className={`flex-1 ml-12 md:ml-0 ${
-                    index % 2 === 0 ? 'md:pr-8 md:text-right' : 'md:pl-8 md:text-left'
-                  }`}>
-                    <div className="card">
-                      <div className="text-2xl font-bold text-primary-blue mb-2">
-                        {milestone.year}
-                      </div>
-                      <h3 className="text-xl font-semibold text-dark-gray mb-2">
-                        {milestone.title}
-                      </h3>
-                      <p className="text-steel-gray">
-                        {milestone.description}
-                      </p>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="bg-white hover:bg-gray-50 text-gray-700 px-6 py-2.5 rounded-xl font-medium text-sm shadow-md border border-gray-200 transition-all duration-200 flex items-center space-x-2"
+            >
+              <PlayIcon className="h-4 w-4" />
+              <span>Watch Story</span>
+            </motion.button>
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* Team */}
-      <section className="section-light">
-        <div className="container">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-dark-gray mb-4">
-              Meet Our Leadership Team
-            </h2>
-            <p className="text-lg text-steel-gray max-w-2xl mx-auto">
-              Our experienced leadership team brings together decades of expertise 
-              in steel construction, engineering, and project management.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {team.map((member, index) => (
-              <motion.div
-                key={member.name}
-                className="card text-center group"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-              >
-                <div className="w-32 h-32 mx-auto mb-6 rounded-full overflow-hidden bg-gradient-to-br from-steel-gray to-dark-gray flex items-center justify-center">
-                  <UserGroupIcon className="h-16 w-16 text-white" />
-                </div>
-                <h3 className="text-xl font-semibold text-dark-gray mb-1">
-                  {member.name}
-                </h3>
-                <p className="text-primary-blue font-medium mb-3">
-                  {member.position}
-                </p>
-                <p className="text-steel-gray text-sm">
-                  {member.description}
-                </p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Certifications */}
-      <section className="section">
-        <div className="container">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold text-dark-gray mb-4">
-              Certifications & Accreditations
-            </h2>
-            <p className="text-lg text-steel-gray max-w-2xl mx-auto">
-              We maintain the highest industry standards through continuous 
-              certification and accreditation programs.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {[
-              'ISO 9001:2015',
-              'AWS Certified',
-              'OSHA Compliant',
-              'Green Building Certified',
-              'Quality Assurance',
-              'Safety Standards',
-              'Environmental Management',
-              'Professional Engineering'
-            ].map((cert, index) => (
-              <motion.div
-                key={cert}
-                className="card text-center"
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-              >
-                <TrophyIcon className="h-8 w-8 text-primary-blue mx-auto mb-2" />
-                <p className="text-dark-gray font-medium text-sm">{cert}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="section-dark">
-        <div className="container text-center">
+      {/* Instagram-Style Stats */}
+      <div className="grid grid-cols-4 gap-3">
+        {stats.map((stat, index) => (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            key={index}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
+            transition={{ duration: 0.3, delay: index * 0.1 }}
+            className={`relative bg-white rounded-2xl p-4 border border-gray-100 ${stat.shadow} shadow-lg hover:shadow-xl transition-all duration-300 group cursor-pointer`}
           >
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-              Ready to Work With Us?
-            </h2>
-            <p className="text-gray-200 text-lg mb-8 max-w-2xl mx-auto">
-              Let's discuss how our expertise and experience can help 
-              bring your steel construction project to life.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <a href="/contact" className="btn btn-primary">
-                Start Your Project
-              </a>
-              <a href="/projects" className="btn btn-outline bg-white text-primary-blue hover:bg-gray-100">
-                View Our Portfolio
-              </a>
+            <div className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} rounded-2xl opacity-0 group-hover:opacity-5 transition-opacity duration-300`}></div>
+            
+            <div className="relative">
+              <div className="flex items-center justify-between mb-2">
+                <div className={`w-10 h-10 bg-gradient-to-br ${stat.gradient} rounded-xl flex items-center justify-center shadow-lg`}>
+                  <span className="text-lg">{stat.emoji}</span>
+                </div>
+                <HeartIcon className="h-4 w-4 text-gray-300 group-hover:text-red-400 transition-colors duration-200" />
+              </div>
+              
+              <div className="text-xl font-bold text-gray-900 mb-1">
+                {stat.number}
+              </div>
+              
+              <div className="text-xs text-gray-500 font-medium">
+                {stat.label}
+              </div>
             </div>
           </motion.div>
+        ))}
+      </div>
+
+      {/* Team Grid */}
+      <div className="flex-1 flex flex-col min-h-0">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center space-x-2">
+            <div className="w-6 h-6 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center">
+              <span className="text-white text-xs">👥</span>
+            </div>
+            <h2 className="text-lg font-bold text-gray-900">Team Members</h2>
+            <div className="bg-gray-100 text-gray-600 px-2 py-1 rounded-lg text-xs font-medium">
+              {teamMembers.length} members
+            </div>
+          </div>
         </div>
-      </section>
+
+        {/* Team Cards Grid */}
+        <div className="flex-1 overflow-hidden">
+          <div className="grid grid-cols-4 gap-3 h-full">
+            {getPaginatedTeam().map((member, index) => (
+              <TeamCard key={member.id} member={member} index={index} />
+            ))}
+          </div>
+        </div>
+
+        {/* Modern Pagination */}
+        {teamMembers.length > itemsPerPage && (
+          <div className="flex justify-center mt-4">
+            <PaginationControls
+              currentPage={currentPage}
+              totalItems={teamMembers.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+              className="scale-90"
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 };

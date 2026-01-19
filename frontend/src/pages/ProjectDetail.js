@@ -191,16 +191,24 @@ const ProjectDetail = () => {
               transition={{ duration: 0.8 }}
             >
               <div className="relative">
-                <div className="w-full h-96 lg:h-[500px] bg-gradient-to-br from-steel-gray to-dark-gray rounded-xl overflow-hidden">
-                  <div className="w-full h-full flex items-center justify-center">
-                    <div className="text-center text-white">
-                      <PhotoIcon className="h-24 w-24 mx-auto mb-4" />
-                      <h3 className="text-xl font-semibold">Project Image</h3>
-                      <p className="text-gray-300 mt-2">
-                        {project.images[selectedImage]?.image_name || 'Main View'}
-                      </p>
+                <div className="w-full h-96 lg:h-[500px] rounded-xl overflow-hidden">
+                  {project.images && project.images.length > 0 && project.images[selectedImage]?.url ? (
+                    <img
+                      src={project.images[selectedImage].url}
+                      alt={project.images[selectedImage].image_name || 'Project Image'}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-steel-gray to-dark-gray flex items-center justify-center">
+                      <div className="text-center text-white">
+                        <PhotoIcon className="h-24 w-24 mx-auto mb-4" />
+                        <h3 className="text-xl font-semibold">Project Image</h3>
+                        <p className="text-gray-300 mt-2">
+                          {(project.images && project.images[selectedImage]?.image_name) || 'Main View'}
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
                 
                 {/* Image Navigation */}

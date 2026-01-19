@@ -74,7 +74,7 @@ const AdminLayout = ({ children }) => {
         <div className="mt-auto p-4 border-t border-white border-opacity-20">
           <button 
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 text-white hover:text-industrial-orange transition-colors p-2 rounded"
+            className="nav-link w-full justify-center hover:bg-red-600"
           >
             <ArrowRightOnRectangleIcon className="w-5 h-5" />
             {!sidebarCollapsed && <span>Logout</span>}

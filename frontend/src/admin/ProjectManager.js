@@ -23,6 +23,7 @@ const ProjectManager = () => {
   const [uploadingImages, setUploadingImages] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [projectImages, setProjectImages] = useState({});
   
   const navigate = useNavigate();
   const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm();
@@ -41,8 +42,16 @@ const ProjectManager = () => {
       const response = await fetch('/api/projects');
       if (response.ok) {
         const data = await response.json();
+        console.log('Fetched projects:', data.length);
         setProjects(data);
+        
+        // Fetch images for each project
+        for (const project of data) {
+          console.log('Fetching images for project:', project.id, project.title);
+          await fetchProjectImages(project.id);
+        }
       } else {
+        console.log('Using placeholder data');
         // Placeholder data for demo
         const placeholderProjects = [
           {
@@ -78,6 +87,33 @@ const ProjectManager = () => {
     }
   };
 
+  const fetchProjectImages = async (projectId) => {
+    console.log('Fetching images for project:', projectId);
+    try {
+      const token = localStorage.getItem('admin_token');
+      const response = await fetch(`/api/admin/projects/${projectId}/images`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      console.log('Fetch images response:', response.status, response.ok);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Images data:', data);
+        setProjectImages(prev => ({
+          ...prev,
+          [projectId]: data.images
+        }));
+      } else {
+        console.error('Failed to fetch images:', response.status, await response.text());
+      }
+    } catch (error) {
+      console.error('Error fetching project images:', error);
+    }
+  };
+
   const onSubmitProject = async (data) => {
     const token = localStorage.getItem('admin_token');
     
@@ -106,6 +142,9 @@ const ProjectManager = () => {
           setProjects(projects.map(p => 
             p.id === editingProject.id ? { ...editingProject, ...data, featured: data.featured === 'true' } : p
           ));
+          setShowAddForm(false);
+          setEditingProject(null);
+          reset();
         } else {
           const newProject = { 
             id: result.project_id || Date.now(), 
@@ -114,11 +153,27 @@ const ProjectManager = () => {
             created_at: new Date().toISOString()
           };
           setProjects([newProject, ...projects]);
+          // Initialize empty images array for new project
+          setProjectImages(prev => ({
+            ...prev,
+            [newProject.id]: []
+          }));
+          
+          // Switch to edit mode for the new project so user can add images
+          setEditingProject(newProject);
+          setValue('title', newProject.title);
+          setValue('description', newProject.description);
+          setValue('category', newProject.category);
+          setValue('location', newProject.location);
+          setValue('size', newProject.size);
+          setValue('year', newProject.year);
+          setValue('featured', newProject.featured.toString());
+          
+          // Don't close the form - let user add images
+          toast.info('Project created! You can now add images to your project.', {
+            autoClose: 3000
+          });
         }
-        
-        setShowAddForm(false);
-        setEditingProject(null);
-        reset();
       } else {
         toast.error('Failed to save project');
       }
@@ -141,14 +196,30 @@ const ProjectManager = () => {
   };
 
   const handleDelete = async (projectId) => {
-    if (!window.confirm('Are you sure you want to delete this project?')) {
+    if (!window.confirm('Are you sure you want to delete this project? This will also delete all associated images.')) {
       return;
     }
 
     try {
-      // For demo purposes, just remove from local state
-      setProjects(projects.filter(p => p.id !== projectId));
-      toast.success('Project deleted successfully');
+      const token = localStorage.getItem('admin_token');
+      const response = await fetch(`/api/admin/projects/${projectId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        setProjects(projects.filter(p => p.id !== projectId));
+        setProjectImages(prev => {
+          const updated = { ...prev };
+          delete updated[projectId];
+          return updated;
+        });
+        toast.success('Project deleted successfully');
+      } else {
+        toast.error('Failed to delete project');
+      }
     } catch (error) {
       toast.error('Failed to delete project');
       console.error('Delete error:', error);
@@ -157,6 +228,9 @@ const ProjectManager = () => {
 
   // Drag and drop for images
   const onDrop = useCallback(async (acceptedFiles) => {
+    console.log('onDrop called with files:', acceptedFiles.length);
+    console.log('Selected project:', selectedProject);
+    
     if (!selectedProject) {
       toast.error('Please select a project first');
       return;
@@ -164,13 +238,16 @@ const ProjectManager = () => {
 
     setUploadingImages(true);
     const token = localStorage.getItem('admin_token');
+    console.log('Token available:', !!token);
 
     try {
       const formData = new FormData();
       acceptedFiles.forEach(file => {
+        console.log('Adding file:', file.name);
         formData.append('files', file);
       });
 
+      console.log('Sending upload request to:', `/api/admin/projects/${selectedProject.id}/upload`);
       const response = await fetch(`/api/admin/projects/${selectedProject.id}/upload`, {
         method: 'POST',
         headers: {
@@ -179,11 +256,18 @@ const ProjectManager = () => {
         body: formData,
       });
 
+      console.log('Upload response:', response.status, response.ok);
+      
       if (response.ok) {
         const result = await response.json();
-        toast.success(`${result.files.length} images uploaded successfully!`);
+        console.log('Upload result:', result);
+        toast.success(`${result.files?.length || 0} images uploaded successfully!`);
+        // Refresh images for the project
+        await fetchProjectImages(selectedProject.id);
       } else {
-        toast.error('Failed to upload images');
+        const errorText = await response.text();
+        console.error('Upload failed:', response.status, errorText);
+        toast.error('Failed to upload images: ' + errorText);
       }
     } catch (error) {
       toast.error('An error occurred while uploading images');
@@ -192,6 +276,50 @@ const ProjectManager = () => {
       setUploadingImages(false);
     }
   }, [selectedProject]);
+
+  const handleDeleteProjectImage = async (projectId, imageId) => {
+    try {
+      const token = localStorage.getItem('admin_token');
+      const response = await fetch(`/api/admin/projects/${projectId}/images/${imageId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        toast.success('Image deleted successfully');
+        await fetchProjectImages(projectId);
+      } else {
+        toast.error('Failed to delete image');
+      }
+    } catch (error) {
+      toast.error('Error deleting image');
+      console.error('Delete error:', error);
+    }
+  };
+
+  const handleSetMainImage = async (projectId, imageId) => {
+    try {
+      const token = localStorage.getItem('admin_token');
+      const response = await fetch(`/api/admin/projects/${projectId}/images/${imageId}/main`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        toast.success('Main image updated successfully');
+        await fetchProjectImages(projectId);
+      } else {
+        toast.error('Failed to update main image');
+      }
+    } catch (error) {
+      toast.error('Error updating main image');
+      console.error('Main image error:', error);
+    }
+  };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -335,43 +463,106 @@ const ProjectManager = () => {
           <div>
             <div className="card">
               <h3 className="text-lg font-bold text-dark-gray mb-4">
-                Image Upload
+                Project Images
               </h3>
               
               {selectedProject ? (
                 <div>
                   <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
                     <p className="font-medium text-blue-900">{selectedProject.title}</p>
-                    <p className="text-blue-700 text-sm">Selected for image upload</p>
+                    <p className="text-blue-700 text-sm">Selected project</p>
                   </div>
 
+                  {/* Upload Area */}
                   <div
                     {...getRootProps()}
-                    className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                    className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors mb-6 ${
                       isDragActive 
                         ? 'border-primary-blue bg-blue-50' 
                         : 'border-steel-gray hover:border-primary-blue'
                     }`}
                   >
                     <input {...getInputProps()} />
-                    <CloudArrowUpIcon className="h-12 w-12 text-steel-gray mx-auto mb-4" />
+                    <CloudArrowUpIcon className="h-10 w-10 text-steel-gray mx-auto mb-3" />
                     
                     {uploadingImages ? (
                       <div>
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-blue mx-auto mb-2"></div>
-                        <p className="text-steel-gray">Uploading images...</p>
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-blue mx-auto mb-2"></div>
+                        <p className="text-steel-gray text-sm">Uploading images...</p>
                       </div>
                     ) : (
                       <div>
-                        <p className="text-dark-gray font-medium mb-2">
+                        <p className="text-dark-gray font-medium text-sm mb-1">
                           {isDragActive ? 'Drop images here!' : 'Drag & drop images here'}
                         </p>
-                        <p className="text-steel-gray text-sm mb-4">
+                        <p className="text-steel-gray text-xs mb-2">
                           Or click to browse files
                         </p>
                         <p className="text-steel-gray text-xs">
-                          Supports: JPG, PNG, GIF, WebP (max 5MB each)
+                          JPG, PNG, GIF, WebP (max 5MB each)
                         </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Project Images */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium text-dark-gray">
+                      Current Images ({projectImages[selectedProject.id]?.length || 0})
+                    </h4>
+                    
+                    {projectImages[selectedProject.id] && projectImages[selectedProject.id].length > 0 ? (
+                      <div className="space-y-3">
+                        {projectImages[selectedProject.id].map((image) => (
+                          <div key={image.id} className="relative group border rounded-lg overflow-hidden">
+                            <div className="aspect-video bg-gray-200">
+                              <img
+                                src={image.url}
+                                alt={image.name}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            
+                            {/* Image Overlay */}
+                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all flex items-center justify-center">
+                              <div className="opacity-0 group-hover:opacity-100 flex space-x-2">
+                                {!image.is_main && (
+                                  <button
+                                    onClick={() => handleSetMainImage(selectedProject.id, image.id)}
+                                    className="bg-white text-gray-800 px-2 py-1 rounded text-xs hover:bg-gray-100 transition-colors"
+                                  >
+                                    Set Main
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => handleDeleteProjectImage(selectedProject.id, image.id)}
+                                  className="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600 transition-colors"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
+                            
+                            {/* Main Image Badge */}
+                            {image.is_main && (
+                              <div className="absolute top-2 left-2">
+                                <span className="bg-green-500 text-white text-xs px-2 py-1 rounded">
+                                  Main
+                                </span>
+                              </div>
+                            )}
+                            
+                            {/* Image Name */}
+                            <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-75 text-white text-xs p-2">
+                              {image.name}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-6 text-steel-gray border-2 border-dashed border-gray-200 rounded-lg">
+                        <PhotoIcon className="h-12 w-12 mx-auto mb-2 text-gray-400" />
+                        <p className="text-sm">No images uploaded</p>
                       </div>
                     )}
                   </div>
@@ -379,7 +570,7 @@ const ProjectManager = () => {
               ) : (
                 <div className="text-center py-8">
                   <PhotoIcon className="h-16 w-16 text-steel-gray mx-auto mb-4" />
-                  <p className="text-steel-gray">Select a project to upload images</p>
+                  <p className="text-steel-gray">Select a project to manage images</p>
                 </div>
               )}
             </div>
@@ -503,6 +694,131 @@ const ProjectManager = () => {
                   </label>
                   <p className="text-steel-gray text-sm">Featured projects appear on the homepage</p>
                 </div>
+
+                {/* Project Images Upload - only show for editing existing projects */}
+                {editingProject && (
+                  <div className="form-group">
+                    <label className="form-label">Project Images</label>
+                    <div className="border border-gray-300 rounded-lg p-4">
+                      <div className="mb-4">
+                        <input
+                          type="file"
+                          id="project-form-images"
+                          multiple
+                          accept="image/*"
+                          onChange={async (e) => {
+                            console.log('Form upload triggered, files:', e.target.files.length);
+                            if (e.target.files.length > 0) {
+                              setUploadingImages(true);
+                              const formData = new FormData();
+                              Array.from(e.target.files).forEach(file => {
+                                console.log('Adding file to form upload:', file.name);
+                                formData.append('files', file);
+                              });
+                              
+                              try {
+                                const token = localStorage.getItem('admin_token');
+                                console.log('Form upload token available:', !!token);
+                                console.log('Uploading to project:', editingProject.id);
+                                
+                                const response = await fetch(`/api/admin/projects/${editingProject.id}/upload`, {
+                                  method: 'POST',
+                                  headers: {
+                                    'Authorization': `Bearer ${token}`
+                                  },
+                                  body: formData,
+                                });
+                                
+                                console.log('Form upload response:', response.status, response.ok);
+                                if (response.ok) {
+                                  const result = await response.json();
+                                  console.log('Form upload result:', result);
+                                  toast.success(`${result.files?.length || 0} images uploaded successfully!`);
+                                  await fetchProjectImages(editingProject.id);
+                                } else {
+                                  const errorText = await response.text();
+                                  console.error('Form upload failed:', errorText);
+                                  toast.error('Failed to upload images: ' + errorText);
+                                }
+                              } catch (error) {
+                                console.error('Form upload error:', error);
+                                toast.error('Error uploading images');
+                              } finally {
+                                setUploadingImages(false);
+                                e.target.value = '';
+                              }
+                            }
+                          }}
+                          className="hidden"
+                        />
+                        <label
+                          htmlFor="project-form-images"
+                          className={`btn btn-secondary text-sm ${uploadingImages ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                        >
+                          {uploadingImages ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
+                              Uploading...
+                            </>
+                          ) : (
+                            <>
+                              <PhotoIcon className="h-4 w-4" />
+                              Add Images
+                            </>
+                          )}
+                        </label>
+                      </div>
+                      
+                      {/* Display current images */}
+                      {projectImages[editingProject.id] && projectImages[editingProject.id].length > 0 && (
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                          {projectImages[editingProject.id].map((image) => (
+                            <div key={image.id} className="relative group">
+                              <div className="aspect-square bg-gray-200 rounded-lg overflow-hidden">
+                                <img
+                                  src={image.url}
+                                  alt={image.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all flex items-center justify-center">
+                                <div className="opacity-0 group-hover:opacity-100 flex space-x-1">
+                                  {!image.is_main && (
+                                    <button
+                                      onClick={() => handleSetMainImage(editingProject.id, image.id)}
+                                      className="bg-white text-gray-800 px-2 py-1 rounded text-xs hover:bg-gray-100 transition-colors"
+                                    >
+                                      Main
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => handleDeleteProjectImage(editingProject.id, image.id)}
+                                    className="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600 transition-colors"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </div>
+                              {image.is_main && (
+                                <div className="absolute top-1 left-1">
+                                  <span className="bg-green-500 text-white text-xs px-1 py-0.5 rounded">
+                                    Main
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {(!projectImages[editingProject.id] || projectImages[editingProject.id].length === 0) && (
+                        <p className="text-steel-gray text-sm text-center py-4">
+                          No images uploaded yet. Click "Add Images" to upload project photos.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex space-x-4 pt-4">
                   <button type="submit" className="btn btn-primary flex-1">
