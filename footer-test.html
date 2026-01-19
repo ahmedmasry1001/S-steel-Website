@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Footer Data Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .section { margin: 20px 0; padding: 10px; border: 1px solid #ccc; }
+        .success { color: green; }
+        .error { color: red; }
+        pre { background: #f4f4f4; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Footer Data Test</h1>
+        
+        <div class="section">
+            <h2>API Response Status: <span id="status">Testing...</span></h2>
+            <pre id="response">Loading...</pre>
+        </div>
+
+        <div class="section">
+            <h2>Parsed Footer Data:</h2>
+            <ul>
+                <li>Address: <strong id="address">-</strong></li>
+                <li>Phone: <strong id="phone">-</strong></li>
+                <li>Email: <strong id="email">-</strong></li>
+                <li>Website: <strong id="website">-</strong></li>
+                <li>ISO Cert: <strong id="iso">-</strong></li>
+                <li>OSHA Cert: <strong id="osha">-</strong></li>
+                <li>AWS Cert: <strong id="aws">-</strong></li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>Footer Component State Simulation:</h2>
+            <div id="footer-preview" style="background: #333; color: white; padding: 20px; border-radius: 5px;">
+                <p><strong>Address:</strong> <span id="preview-address">Loading...</span></p>
+                <p><strong>Phone:</strong> <span id="preview-phone">Loading...</span></p>
+                <p><strong>Email:</strong> <span id="preview-email">Loading...</span></p>
+                <p><strong>Website:</strong> <span id="preview-website">Loading...</span></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Test the API
+        console.log('Starting footer data test...');
+        
+        fetch('/api/company-info')
+            .then(res => {
+                console.log('Response received:', res.status);
+                document.getElementById('status').textContent = res.ok ? '✓ Success (200)' : '✗ Error (' + res.status + ')';
+                document.getElementById('status').className = res.ok ? 'success' : 'error';
+                return res.json();
+            })
+            .then(data => {
+                console.log('Data received:', data);
+                document.getElementById('response').textContent = JSON.stringify(data, null, 2);
+                
+                // Extract footer data
+                const footerData = {
+                    address: data.footer_address || 'Not found',
+                    phone: data.footer_phone || 'Not found',
+                    email: data.footer_email || 'Not found',
+                    website: data.footer_website || 'Not found',
+                    iso: data.footer_certification_iso,
+                    osha: data.footer_certification_osha,
+                    aws: data.footer_certification_aws
+                };
+                
+                // Display parsed data
+                document.getElementById('address').textContent = footerData.address;
+                document.getElementById('phone').textContent = footerData.phone;
+                document.getElementById('email').textContent = footerData.email;
+                document.getElementById('website').textContent = footerData.website;
+                document.getElementById('iso').textContent = footerData.iso ? '✓ Yes' : '✗ No';
+                document.getElementById('osha').textContent = footerData.osha ? '✓ Yes' : '✗ No';
+                document.getElementById('aws').textContent = footerData.aws ? '✓ Yes' : '✗ No';
+                
+                // Simulate footer component display
+                document.getElementById('preview-address').textContent = footerData.address;
+                document.getElementById('preview-phone').textContent = footerData.phone;
+                document.getElementById('preview-email').textContent = footerData.email;
+                document.getElementById('preview-website').textContent = footerData.website;
+                
+                console.log('Footer data test complete');
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                document.getElementById('status').textContent = '✗ Error: ' + err.message;
+                document.getElementById('status').className = 'error';
+                document.getElementById('response').textContent = 'Error: ' + err.message;
+            });
+    </script>
+</body>
+</html>

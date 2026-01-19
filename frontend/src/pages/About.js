@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { PaginationControls } from '../components/MainLayout';
 import {
@@ -11,42 +11,70 @@ import {
 
 const About = () => {
   const [currentPage, setCurrentPage] = useState(1);
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [homeContent, setHomeContent] = useState(null);
+  const [loading, setLoading] = useState(true);
   const itemsPerPage = 12;
 
-  // Modern 3D stats with Instagram-style design
-  const stats = [
-    { 
-      number: '25+', 
-      label: 'Years Experience', 
-      emoji: '⏰',
-      gradient: 'from-blue-500 to-purple-600',
-      shadow: 'shadow-blue-500/25'
-    },
-    { 
-      number: '500+', 
-      label: 'Projects Delivered', 
-      emoji: '🏗️',
-      gradient: 'from-emerald-500 to-teal-600',
-      shadow: 'shadow-emerald-500/25'
-    },
-    { 
-      number: '200+', 
-      label: 'Happy Clients', 
-      emoji: '😊',
-      gradient: 'from-orange-500 to-red-600',
-      shadow: 'shadow-orange-500/25'
-    },
-    { 
-      number: '100%', 
-      label: 'Safety Rating', 
-      emoji: '🛡️',
-      gradient: 'from-green-500 to-emerald-600',
-      shadow: 'shadow-green-500/25'
-    }
-  ];
+  // Load team members and company data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch employees
+        const employeesResponse = await fetch('/api/employees');
+        if (employeesResponse.ok) {
+          const employeesData = await employeesResponse.json();
+          
+          // Transform API data to match the expected format with gradient colors
+          const gradients = [
+            'from-blue-500 to-purple-600',
+            'from-emerald-500 to-teal-600',
+            'from-orange-500 to-red-600',
+            'from-violet-500 to-purple-600',
+            'from-green-500 to-emerald-600',
+            'from-pink-500 to-rose-600',
+            'from-yellow-500 to-orange-600',
+            'from-indigo-500 to-blue-600'
+          ];
 
-  // Modern team members with social media style
-  const teamMembers = [
+          const transformedMembers = employeesData.map((employee, index) => ({
+            id: employee.id,
+            name: employee.name,
+            role: employee.role,
+            avatar: employee.avatar,
+            experience: employee.experience,
+            specialty: employee.specialty,
+            gradient: gradients[index % gradients.length],
+            verified: employee.verified
+          }));
+          
+          setTeamMembers(transformedMembers);
+        } else {
+          // Fallback to default data if API fails
+          setTeamMembers(getDefaultTeamMembers());
+        }
+
+        // Fetch home content for stats
+        const homeResponse = await fetch('/api/home-content');
+        if (homeResponse.ok) {
+          const homeData = await homeResponse.json();
+          setHomeContent(homeData);
+        }
+
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        // Keep existing hardcoded data as fallback
+        setTeamMembers(getDefaultTeamMembers());
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Fallback team members if API fails
+  const getDefaultTeamMembers = () => [
     {
       id: 1,
       name: 'Sarah Johnson',
@@ -76,98 +104,76 @@ const About = () => {
       specialty: 'Steel Fabrication',
       gradient: 'from-orange-500 to-red-600',
       verified: true
-    },
-    {
-      id: 4,
-      name: 'Emma Wilson',
-      role: 'Safety Coordinator',
-      avatar: '👩‍🔧',
-      experience: '10 years',
-      specialty: 'Safety Management',
-      gradient: 'from-violet-500 to-purple-600',
-      verified: true
-    },
-    {
-      id: 5,
-      name: 'James Thompson',
-      role: 'Quality Inspector',
-      avatar: '👨‍🔬',
-      experience: '14 years',
-      specialty: 'Quality Control',
-      gradient: 'from-green-500 to-emerald-600',
-      verified: true
-    },
-    {
-      id: 6,
-      name: 'Lisa Park',
-      role: 'Design Specialist',
-      avatar: '👩‍🎨',
-      experience: '11 years',
-      specialty: 'CAD Design',
-      gradient: 'from-pink-500 to-rose-600',
-      verified: true
-    },
-    {
-      id: 7,
-      name: 'Robert Kim',
-      role: 'Site Supervisor',
-      avatar: '👨‍🏭',
-      experience: '16 years',
-      specialty: 'Site Management',
-      gradient: 'from-yellow-500 to-orange-600',
-      verified: true
-    },
-    {
-      id: 8,
-      name: 'Maria Garcia',
-      role: 'Construction Manager',
-      avatar: '👩‍🏭',
-      experience: '13 years',
-      specialty: 'Construction Planning',
-      gradient: 'from-indigo-500 to-blue-600',
-      verified: true
-    },
-    {
-      id: 9,
-      name: 'Alex Johnson',
-      role: 'Steel Fabricator',
-      avatar: '👨‍🔧',
-      experience: '9 years',
-      specialty: 'Metal Working',
-      gradient: 'from-teal-500 to-cyan-600',
-      verified: false
-    },
-    {
-      id: 10,
-      name: 'Jennifer Lee',
-      role: 'Engineering Assistant',
-      avatar: '👩‍💼',
-      experience: '7 years',
-      specialty: 'Technical Support',
-      gradient: 'from-purple-500 to-pink-600',
-      verified: false
-    },
-    {
-      id: 11,
-      name: 'Mark Davis',
-      role: 'Crane Operator',
-      avatar: '👨‍🏭',
-      experience: '20 years',
-      specialty: 'Heavy Machinery',
-      gradient: 'from-red-500 to-pink-600',
-      verified: true
-    },
-    {
-      id: 12,
-      name: 'Rachel Brown',
-      role: 'Quality Analyst',
-      avatar: '👩‍🔬',
-      experience: '8 years',
-      specialty: 'Quality Analysis',
-      gradient: 'from-cyan-500 to-blue-600',
-      verified: false
     }
   ];
+
+  // Generate dynamic stats from API data or use defaults
+  const getStats = () => {
+    if (homeContent?.stats) {
+      return [
+        { 
+          number: `${homeContent.stats.yearsExperience}+`, 
+          label: 'Years Experience', 
+          emoji: '⏰',
+          gradient: 'from-blue-500 to-purple-600',
+          shadow: 'shadow-blue-500/25'
+        },
+        { 
+          number: `${homeContent.stats.projectsCompleted}+`, 
+          label: 'Projects Completed', 
+          emoji: '🏗️',
+          gradient: 'from-emerald-500 to-teal-600',
+          shadow: 'shadow-emerald-500/25'
+        },
+        { 
+          number: `${homeContent.stats.teamMembers}+`, 
+          label: 'Team Members', 
+          emoji: '👥',
+          gradient: 'from-orange-500 to-red-600',
+          shadow: 'shadow-orange-500/25'
+        },
+        { 
+          number: `${homeContent.stats.clientSatisfaction}%`, 
+          label: 'Client Satisfaction', 
+          emoji: '🛡️',
+          gradient: 'from-green-500 to-emerald-600',
+          shadow: 'shadow-green-500/25'
+        }
+      ];
+    }
+
+    // Fallback to static stats if no API data
+    return [
+      { 
+        number: '25+', 
+        label: 'Years Experience', 
+        emoji: '⏰',
+        gradient: 'from-blue-500 to-purple-600',
+        shadow: 'shadow-blue-500/25'
+      },
+      { 
+        number: '500+', 
+        label: 'Projects Delivered', 
+        emoji: '🏗️',
+        gradient: 'from-emerald-500 to-teal-600',
+        shadow: 'shadow-emerald-500/25'
+      },
+      { 
+        number: '200+', 
+        label: 'Happy Clients', 
+        emoji: '😊',
+        gradient: 'from-orange-500 to-red-600',
+        shadow: 'shadow-orange-500/25'
+      },
+      { 
+        number: '100%', 
+        label: 'Safety Rating', 
+        emoji: '🛡️',
+        gradient: 'from-green-500 to-emerald-600',
+        shadow: 'shadow-green-500/25'
+      }
+    ];
+  };
 
   // Get paginated team members
   const getPaginatedTeam = () => {
@@ -221,6 +227,15 @@ const About = () => {
     </motion.div>
   );
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-steel-blue border-t-transparent"></div>
+        <span className="ml-2 text-text-secondary">Loading team information...</span>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full flex flex-col space-y-4 overflow-hidden">
       {/* Modern Hero Section - Social Media Style */}
@@ -239,7 +254,7 @@ const About = () => {
           </div>
           
           <p className="text-gray-600 text-sm mb-4 max-w-2xl">
-            Experienced professionals delivering premium steel construction services with 25+ years of industry expertise.
+            {homeContent?.companyDescription || 'Experienced professionals delivering premium steel construction services with 25+ years of industry expertise.'}
           </p>
           
           <div className="flex items-center space-x-3">
@@ -266,7 +281,7 @@ const About = () => {
 
       {/* Instagram-Style Stats */}
       <div className="grid grid-cols-4 gap-3">
-        {stats.map((stat, index) => (
+        {getStats().map((stat, index) => (
           <motion.div
             key={index}
             initial={{ opacity: 0, y: 10 }}

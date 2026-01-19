@@ -17,8 +17,10 @@ const Navbar = () => {
   const isActive = (path) => location.pathname === path;
 
   return (
-    <nav className="bg-white shadow-lg sticky top-0 z-50 border-b-2 border-industrial-orange">
-      <div className="container">
+    <>
+      {/* Main Navigation */}
+      <nav className="bg-white shadow-lg sticky top-0 z-50 border-b-2 border-industrial-orange">
+        <div className="container">
         <div className="flex justify-between items-center py-4">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
@@ -96,7 +98,8 @@ const Navbar = () => {
           </div>
         )}
       </div>
-    </nav>
+      </nav>
+    </>
   );
 };
 

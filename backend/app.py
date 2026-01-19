@@ -116,6 +116,39 @@ def init_db():
         )
     ''')
     
+    # Employees table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS employees (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            role TEXT,
+            experience_years INTEGER,
+            specialty TEXT,
+            bio TEXT,
+            email TEXT,
+            phone TEXT,
+            avatar_url TEXT,
+            display_order INTEGER DEFAULT 0,
+            is_active BOOLEAN DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # Contact cards table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS contact_cards (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            details TEXT,
+            sub_details TEXT,
+            contact_type TEXT,
+            icon_emoji TEXT,
+            display_order INTEGER DEFAULT 0,
+            is_active BOOLEAN DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
     # Initialize default home content
     default_content = {
         'company_description': 'S-Steel Construction is a leading provider of steel construction services with over 15 years of experience in delivering high-quality projects.',
@@ -684,6 +717,81 @@ def get_public_home_content():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# Company Info Endpoint (Public)
+@app.route('/api/company-info', methods=['GET'])
+def get_public_company_info():
+    """Get company information for public website (footer, contact info)"""
+    try:
+        conn = get_db_connection()
+        
+        # Get all company settings from database
+        company_data = {}
+        rows = conn.execute(
+            'SELECT content_key, content_value FROM home_content WHERE content_key LIKE ?', 
+            ('company_%',)
+        ).fetchall()
+        
+        for row in rows:
+            key = row['content_key'].replace('company_', '')
+            try:
+                # Try to parse as JSON for complex data
+                company_data[key] = json.loads(row['content_value'])
+            except:
+                # Keep as string for simple values
+                company_data[key] = row['content_value']
+        
+        # Also get footer-specific settings
+        footer_rows = conn.execute(
+            'SELECT content_key, content_value FROM home_content WHERE content_key LIKE ?', 
+            ('footer_%',)
+        ).fetchall()
+        
+        for row in footer_rows:
+            key = row['content_key']  # Keep the full key with footer_ prefix
+            value = row['content_value']
+            
+            # Special handling for boolean values
+            if 'certification' in key:
+                # Convert "true"/"false" strings to actual booleans
+                company_data[key] = value.lower() == 'true'
+            else:
+                try:
+                    # Try to parse as JSON for complex data
+                    company_data[key] = json.loads(value)
+                except:
+                    # Keep as string for simple values
+                    company_data[key] = value
+        
+        # Set default values if not found
+        defaults = {
+            'address': '123 Steel Avenue, Industrial District, City, State 12345',
+            'phone': '+1 (555) 123-4567',
+            'email': 'info@s-steel.com',
+            'website': 'www.s-steel.com',
+            'footer_address': '123 Steel Industry Blvd, Industrial City',
+            'footer_phone': '+1 (555) 123-4567',
+            'footer_fax': '+1 (555) 123-4568',
+            'footer_email': 'info@s-steel.com',
+            'footer_website': 'www.s-steel.com',
+            'footer_facebook': '',
+            'footer_twitter': '',
+            'footer_instagram': '',
+            'footer_linkedin': '',
+            'footer_certification_iso': True,
+            'footer_certification_osha': True,
+            'footer_certification_aws': True
+        }
+        
+        # Merge defaults with saved settings
+        for key, default_value in defaults.items():
+            if key not in company_data:
+                company_data[key] = default_value
+        
+        conn.close()
+        return jsonify(company_data)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 # Home Content Management Routes
 @app.route('/api/admin/home-content', methods=['GET'])
 @jwt_required()
@@ -897,7 +1005,560 @@ def delete_hero_image(image_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# Employee Management APIs
+@app.route('/api/employees', methods=['GET'])
+def get_employees():
+    """Get all active employees for public website"""
+    try:
+        conn = get_db_connection()
+        employees = []
+        rows = conn.execute('''
+            SELECT id, name, role, experience_years, specialty, avatar_url 
+            FROM employees 
+            WHERE is_active = 1 
+            ORDER BY display_order, name
+        ''').fetchall()
+        
+        for row in rows:
+            employees.append({
+                'id': row['id'],
+                'name': row['name'],
+                'role': row['role'],
+                'experience': f"{row['experience_years']} years" if row['experience_years'] else 'N/A',
+                'specialty': row['specialty'],
+                'avatar': row['avatar_url'] or '👨‍💼',
+                'verified': True
+            })
+        
+        conn.close()
+        return jsonify(employees)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/employees', methods=['GET'])
+@jwt_required()
+def get_admin_employees():
+    """Get all employees for admin management"""
+    try:
+        conn = get_db_connection()
+        employees = []
+        rows = conn.execute('''
+            SELECT * FROM employees ORDER BY display_order, name
+        ''').fetchall()
+        
+        for row in rows:
+            employees.append({
+                'id': row['id'],
+                'name': row['name'],
+                'role': row['role'],
+                'experience_years': row['experience_years'],
+                'specialty': row['specialty'],
+                'bio': row['bio'],
+                'email': row['email'],
+                'phone': row['phone'],
+                'avatar_url': row['avatar_url'],
+                'display_order': row['display_order'],
+                'is_active': bool(row['is_active']),
+                'created_at': row['created_at']
+            })
+        
+        conn.close()
+        return jsonify(employees)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/employees', methods=['POST'])
+@jwt_required()
+def create_employee():
+    """Create new employee"""
+    try:
+        data = request.get_json()
+        
+        conn = get_db_connection()
+        conn.execute('''
+            INSERT INTO employees (name, role, experience_years, specialty, bio, email, phone, avatar_url, display_order, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            data.get('name'),
+            data.get('role'),
+            data.get('experience_years'),
+            data.get('specialty'),
+            data.get('bio'),
+            data.get('email'),
+            data.get('phone'),
+            data.get('avatar_url'),
+            data.get('display_order', 0),
+            data.get('is_active', True)
+        ))
+        conn.commit()
+        
+        employee_id = conn.lastrowid
+        conn.close()
+        
+        return jsonify({'message': 'Employee created successfully', 'id': employee_id}), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/employees/<int:employee_id>', methods=['PUT'])
+@jwt_required()
+def update_employee(employee_id):
+    """Update employee"""
+    try:
+        data = request.get_json()
+        
+        conn = get_db_connection()
+        conn.execute('''
+            UPDATE employees 
+            SET name=?, role=?, experience_years=?, specialty=?, bio=?, email=?, phone=?, avatar_url=?, display_order=?, is_active=?
+            WHERE id=?
+        ''', (
+            data.get('name'),
+            data.get('role'),
+            data.get('experience_years'),
+            data.get('specialty'),
+            data.get('bio'),
+            data.get('email'),
+            data.get('phone'),
+            data.get('avatar_url'),
+            data.get('display_order', 0),
+            data.get('is_active', True),
+            employee_id
+        ))
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'message': 'Employee updated successfully'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/employees/<int:employee_id>', methods=['DELETE'])
+@jwt_required()
+def delete_employee(employee_id):
+    """Delete employee"""
+    try:
+        conn = get_db_connection()
+        conn.execute('DELETE FROM employees WHERE id=?', (employee_id,))
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'message': 'Employee deleted successfully'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Contact Cards Management APIs
+@app.route('/api/contact-cards', methods=['GET'])
+def get_contact_cards():
+    """Get all active contact cards for public website"""
+    try:
+        conn = get_db_connection()
+        cards = []
+        rows = conn.execute('''
+            SELECT id, title, details, sub_details, contact_type, icon_emoji 
+            FROM contact_cards 
+            WHERE is_active = 1 
+            ORDER BY display_order, title
+        ''').fetchall()
+        
+        for row in rows:
+            cards.append({
+                'id': row['id'],
+                'title': row['title'],
+                'details': row['details'],
+                'subDetails': row['sub_details'],
+                'emoji': row['icon_emoji'] or '📞',
+                'gradient': 'from-blue-500 to-purple-600',  # Default gradient
+                'verified': True
+            })
+        
+        conn.close()
+        return jsonify(cards)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/contact-cards', methods=['GET'])
+@jwt_required()
+def get_admin_contact_cards():
+    """Get all contact cards for admin management"""
+    try:
+        conn = get_db_connection()
+        cards = []
+        rows = conn.execute('''
+            SELECT * FROM contact_cards ORDER BY display_order, title
+        ''').fetchall()
+        
+        for row in rows:
+            cards.append({
+                'id': row['id'],
+                'title': row['title'],
+                'details': row['details'],
+                'sub_details': row['sub_details'],
+                'contact_type': row['contact_type'],
+                'icon_emoji': row['icon_emoji'],
+                'display_order': row['display_order'],
+                'is_active': bool(row['is_active']),
+                'created_at': row['created_at']
+            })
+        
+        conn.close()
+        return jsonify(cards)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/contact-cards', methods=['POST'])
+@jwt_required()
+def create_contact_card():
+    """Create new contact card"""
+    try:
+        data = request.get_json()
+        
+        conn = get_db_connection()
+        conn.execute('''
+            INSERT INTO contact_cards (title, details, sub_details, contact_type, icon_emoji, display_order, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            data.get('title'),
+            data.get('details'),
+            data.get('sub_details'),
+            data.get('contact_type'),
+            data.get('icon_emoji'),
+            data.get('display_order', 0),
+            data.get('is_active', True)
+        ))
+        conn.commit()
+        
+        card_id = conn.lastrowid
+        conn.close()
+        
+        return jsonify({'message': 'Contact card created successfully', 'id': card_id}), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/contact-cards/<int:card_id>', methods=['PUT'])
+@jwt_required()
+def update_contact_card(card_id):
+    """Update contact card"""
+    try:
+        data = request.get_json()
+        
+        conn = get_db_connection()
+        conn.execute('''
+            UPDATE contact_cards 
+            SET title=?, details=?, sub_details=?, contact_type=?, icon_emoji=?, display_order=?, is_active=?
+            WHERE id=?
+        ''', (
+            data.get('title'),
+            data.get('details'),
+            data.get('sub_details'),
+            data.get('contact_type'),
+            data.get('icon_emoji'),
+            data.get('display_order', 0),
+            data.get('is_active', True),
+            card_id
+        ))
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'message': 'Contact card updated successfully'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/contact-cards/<int:card_id>', methods=['DELETE'])
+@jwt_required()
+def delete_contact_card(card_id):
+    """Delete contact card"""
+    try:
+        conn = get_db_connection()
+        conn.execute('DELETE FROM contact_cards WHERE id=?', (card_id,))
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'message': 'Contact card deleted successfully'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 # Route to serve uploaded files
+# Company Settings Endpoints
+@app.route('/api/admin/company-settings', methods=['GET'])
+@jwt_required()
+def get_company_settings():
+    """Get all company settings"""
+    try:
+        conn = sqlite3.connect(DATABASE)
+        conn.row_factory = sqlite3.Row
+        
+        settings = {}
+        
+        # Get all settings from home_content table with 'company_' prefix
+        rows = conn.execute(
+            'SELECT content_key, content_value FROM home_content WHERE content_key LIKE ?', 
+            ('company_%',)
+        ).fetchall()
+        
+        for row in rows:
+            # Remove 'company_' prefix from key
+            key = row['content_key'].replace('company_', '')
+            try:
+                # Try to parse as JSON for complex data
+                settings[key] = json.loads(row['content_value'])
+            except:
+                # Keep as string for simple values
+                settings[key] = row['content_value']
+        
+        # Also get footer settings with 'footer_' prefix
+        footer_rows = conn.execute(
+            'SELECT content_key, content_value FROM home_content WHERE content_key LIKE ?', 
+            ('footer_%',)
+        ).fetchall()
+        
+        for row in footer_rows:
+            key = row['content_key']  # Keep the full key with footer_ prefix
+            value = row['content_value']
+            
+            # Special handling for boolean values
+            if 'certification' in key:
+                # Convert "true"/"false" strings to actual booleans
+                settings[key] = value.lower() == 'true'
+            else:
+                try:
+                    # Try to parse as JSON for complex data
+                    settings[key] = json.loads(value)
+                except:
+                    # Keep as string for simple values
+                    settings[key] = value
+        
+        # Set default values if not found
+        defaults = {
+            'name': 'S-Steel Construction',
+            'description': 'Leading steel construction and engineering company specializing in industrial, commercial, and infrastructure projects.',
+            'address': '123 Industrial Ave, Steel City, SC 12345',
+            'phone': '+1 (555) 123-4567',
+            'email': 'info@s-steel.com',
+            'website': 'www.s-steel.com',
+            'founded': '1995',
+            'employees': '250+',
+            'projects_completed': '500+',
+            'support_email': 'support@s-steel.com',
+            'support_phone': '+1 (555) 123-4568',
+            'sales_email': 'sales@s-steel.com',
+            'sales_phone': '+1 (555) 123-4569',
+            'emergency_contact': '+1 (555) 911-STEEL',
+            'business_hours': 'Mon-Fri: 8:00 AM - 6:00 PM',
+            'office_locations': [
+                {
+                    'id': 1,
+                    'name': 'Main Office',
+                    'address': '123 Industrial Ave, Steel City, SC 12345',
+                    'phone': '+1 (555) 123-4567'
+                },
+                {
+                    'id': 2,
+                    'name': 'Regional Office',
+                    'address': '456 Construction Blvd, Metro City, MC 67890',
+                    'phone': '+1 (555) 987-6543'
+                }
+            ],
+            # Footer defaults
+            'footer_address': '123 Steel Industry Blvd, Industrial City',
+            'footer_phone': '+1 (555) 123-4567',
+            'footer_fax': '+1 (555) 123-4568',
+            'footer_email': 'info@s-steel.com',
+            'footer_website': 'www.s-steel.com',
+            'footer_facebook': '',
+            'footer_twitter': '',
+            'footer_instagram': '',
+            'footer_linkedin': '',
+            'footer_certification_iso': True,
+            'footer_certification_osha': True,
+            'footer_certification_aws': True
+        }
+        
+        # Merge defaults with saved settings
+        for key, default_value in defaults.items():
+            if key not in settings:
+                settings[key] = default_value
+        
+        conn.close()
+        return jsonify(settings)
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/company-settings', methods=['PUT'])
+@jwt_required()
+def update_company_settings():
+    """Update company settings"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        conn = sqlite3.connect(DATABASE)
+        cursor = conn.cursor()
+        
+        # Update each setting
+        for key, value in data.items():
+            # Only add 'company_' prefix if key doesn't already have a prefix
+            if key.startswith('footer_') or key.startswith('dashboard_'):
+                content_key = key  # Keep footer_* and dashboard_* keys as-is
+            else:
+                content_key = f'company_{key}'  # Add prefix for other keys
+            
+            # Convert complex data to JSON string
+            if isinstance(value, (dict, list)):
+                content_value = json.dumps(value)
+            elif isinstance(value, bool):
+                # Convert boolean to "true"/"false" string for consistency
+                content_value = "true" if value else "false"
+            else:
+                content_value = str(value)
+            
+            # Try to update existing record
+            cursor.execute(
+                "UPDATE home_content SET content_value = ?, updated_at = CURRENT_TIMESTAMP WHERE content_key = ?",
+                (content_value, content_key)
+            )
+            
+            # If no rows were affected, insert new record
+            if cursor.rowcount == 0:
+                cursor.execute(
+                    "INSERT INTO home_content (content_key, content_value) VALUES (?, ?)",
+                    (content_key, content_value)
+                )
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'message': 'Company settings updated successfully'})
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Dashboard Settings Endpoints
+@app.route('/api/admin/dashboard-settings', methods=['GET'])
+@jwt_required()
+def get_dashboard_settings():
+    """Get dashboard settings"""
+    try:
+        conn = sqlite3.connect(DATABASE)
+        conn.row_factory = sqlite3.Row
+        
+        # Get dashboard settings from home_content table with 'dashboard_' prefix
+        rows = conn.execute(
+            'SELECT content_key, content_value FROM home_content WHERE content_key LIKE ?', 
+            ('dashboard_%',)
+        ).fetchall()
+        
+        settings = {}
+        for row in rows:
+            key = row['content_key'].replace('dashboard_', '')
+            try:
+                settings[key] = json.loads(row['content_value'])
+            except:
+                settings[key] = row['content_value']
+        
+        # Set defaults if not found
+        if 'stats_cards' not in settings:
+            settings['stats_cards'] = [
+                {
+                    'id': 1,
+                    'title': 'Total Projects',
+                    'value': '12',
+                    'change': '+12% this month',
+                    'icon': 'BuildingOfficeIcon',
+                    'visible': True,
+                    'order': 1
+                },
+                {
+                    'id': 2,
+                    'title': 'New Contacts',
+                    'value': '5',
+                    'change': '+8% this week',
+                    'icon': 'ChatBubbleLeftRightIcon',
+                    'visible': True,
+                    'order': 2
+                },
+                {
+                    'id': 3,
+                    'title': 'Active Projects',
+                    'value': '8',
+                    'change': '+2 from last month',
+                    'icon': 'ChartBarIcon',
+                    'visible': True,
+                    'order': 3
+                },
+                {
+                    'id': 4,
+                    'title': 'Revenue',
+                    'value': '$2.5M',
+                    'change': '+15% this quarter',
+                    'icon': 'BanknotesIcon',
+                    'visible': True,
+                    'order': 4
+                }
+            ]
+        
+        if 'quick_actions' not in settings:
+            settings['quick_actions'] = [
+                {
+                    'id': 1,
+                    'title': 'Add New Project',
+                    'description': 'Create a new construction project',
+                    'link': '/admin/projects/new',
+                    'icon': 'PlusIcon',
+                    'visible': True
+                },
+                {
+                    'id': 2,
+                    'title': 'View Contacts',
+                    'description': 'Manage customer inquiries',
+                    'link': '/admin/contacts',
+                    'icon': 'ChatBubbleLeftRightIcon',
+                    'visible': True
+                }
+            ]
+        
+        conn.close()
+        return jsonify(settings)
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/dashboard-settings', methods=['PUT'])
+@jwt_required()
+def update_dashboard_settings():
+    """Update dashboard settings"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        conn = sqlite3.connect(DATABASE)
+        cursor = conn.cursor()
+        
+        # Update each setting with 'dashboard_' prefix
+        for key, value in data.items():
+            content_key = f'dashboard_{key}'
+            content_value = json.dumps(value)
+            
+            cursor.execute(
+                "UPDATE home_content SET content_value = ?, updated_at = CURRENT_TIMESTAMP WHERE content_key = ?",
+                (content_value, content_key)
+            )
+            
+            if cursor.rowcount == 0:
+                cursor.execute(
+                    "INSERT INTO home_content (content_key, content_value) VALUES (?, ?)",
+                    (content_key, content_value)
+                )
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'message': 'Dashboard settings updated successfully'})
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/uploads/<path:filename>')
 def serve_upload(filename):
     """Serve uploaded files"""

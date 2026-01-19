@@ -10,48 +10,93 @@ import {
 
 const Home = () => {
   const [projects, setProjects] = useState([]);
+  const [homeContent, setHomeContent] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Modern 3D stats with Instagram-style design
-  const stats = [
-    { 
-      label: 'Projects Delivered', 
-      value: '500+', 
-      emoji: '🏗️',
-      gradient: 'from-blue-500 to-purple-600',
-      shadow: 'shadow-blue-500/25'
-    },
-    { 
-      label: 'Years Experience', 
-      value: '25+', 
-      emoji: '⏰',
-      gradient: 'from-emerald-500 to-teal-600',
-      shadow: 'shadow-emerald-500/25'
-    },
-    { 
-      label: 'Happy Clients', 
-      value: '200+', 
-      emoji: '👥',
-      gradient: 'from-orange-500 to-red-600',
-      shadow: 'shadow-orange-500/25'
-    },
-    { 
-      label: 'Safety Rating', 
-      value: '100%', 
-      emoji: '🛡️',
-      gradient: 'from-violet-500 to-purple-600',
-      shadow: 'shadow-violet-500/25'
+  // Generate dynamic stats from API data or use defaults
+  const getStats = () => {
+    if (homeContent?.stats) {
+      return [
+        { 
+          label: 'Projects Completed', 
+          value: `${homeContent.stats.projectsCompleted}+`, 
+          emoji: '🏗️',
+          gradient: 'from-blue-500 to-purple-600',
+          shadow: 'shadow-blue-500/25'
+        },
+        { 
+          label: 'Years Experience', 
+          value: `${homeContent.stats.yearsExperience}+`, 
+          emoji: '⏰',
+          gradient: 'from-emerald-500 to-teal-600',
+          shadow: 'shadow-emerald-500/25'
+        },
+        { 
+          label: 'Team Members', 
+          value: `${homeContent.stats.teamMembers}+`, 
+          emoji: '👥',
+          gradient: 'from-orange-500 to-red-600',
+          shadow: 'shadow-orange-500/25'
+        },
+        { 
+          label: 'Client Satisfaction', 
+          value: `${homeContent.stats.clientSatisfaction}%`, 
+          emoji: '🛡️',
+          gradient: 'from-violet-500 to-purple-600',
+          shadow: 'shadow-violet-500/25'
+        }
+      ];
     }
-  ];
 
-  // Fetch featured projects (limit to 8 for 2 rows)
+    // Fallback to static stats if no API data
+    return [
+      { 
+        label: 'Projects Delivered', 
+        value: '500+', 
+        emoji: '🏗️',
+        gradient: 'from-blue-500 to-purple-600',
+        shadow: 'shadow-blue-500/25'
+      },
+      { 
+        label: 'Years Experience', 
+        value: '25+', 
+        emoji: '⏰',
+        gradient: 'from-emerald-500 to-teal-600',
+        shadow: 'shadow-emerald-500/25'
+      },
+      { 
+        label: 'Happy Clients', 
+        value: '200+', 
+        emoji: '👥',
+        gradient: 'from-orange-500 to-red-600',
+        shadow: 'shadow-orange-500/25'
+      },
+      { 
+        label: 'Safety Rating', 
+        value: '100%', 
+        emoji: '🛡️',
+        gradient: 'from-violet-500 to-purple-600',
+        shadow: 'shadow-violet-500/25'
+      }
+    ];
+  };
+
+  // Fetch home content and featured projects
   useEffect(() => {
-    const fetchProjects = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch('/api/projects?featured=true');
-        if (response.ok) {
-          const data = await response.json();
-          setProjects(data.slice(0, 8)); // Only 8 for compact display
+        // Fetch home content
+        const homeResponse = await fetch('/api/home-content');
+        if (homeResponse.ok) {
+          const homeData = await homeResponse.json();
+          setHomeContent(homeData);
+        }
+
+        // Fetch featured projects (limit to 8 for 2 rows)
+        const projectsResponse = await fetch('/api/projects?featured=true');
+        if (projectsResponse.ok) {
+          const projectsData = await projectsResponse.json();
+          setProjects(projectsData.slice(0, 8)); // Only 8 for compact display
         } else {
           // Compact placeholder projects
           setProjects([
@@ -62,13 +107,13 @@ const Home = () => {
           ]);
         }
       } catch (error) {
-        console.error('Error fetching projects:', error);
+        console.error('Error fetching data:', error);
         setProjects([]);
       } finally {
         setLoading(false);
       }
     };
-    fetchProjects();
+    fetchData();
   }, []);
 
   const ProjectCard = ({ project, index }) => (
@@ -153,14 +198,13 @@ const Home = () => {
                 <span className="text-white text-lg">🏗️</span>
               </div>
               <h1 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                Professional Steel Services
+                {homeContent?.companyDescription ? 'S-Steel Construction' : 'Professional Steel Services'}
               </h1>
             </div>
           </div>
           
           <p className="text-gray-600 text-sm mb-4 max-w-2xl">
-            Book premium steel construction services with industry-leading expertise. 
-            Trusted by 500+ clients worldwide.
+            {homeContent?.companyDescription || 'Book premium steel construction services with industry-leading expertise. Trusted by 500+ clients worldwide.'}
           </p>
           
           <div className="flex items-center space-x-3">
@@ -187,7 +231,7 @@ const Home = () => {
 
       {/* Instagram-Style Stats Cards */}
       <div className="grid grid-cols-4 gap-3">
-        {stats.map((stat, index) => (
+        {getStats().map((stat, index) => (
           <motion.div
             key={index}
             initial={{ opacity: 0, y: 10 }}

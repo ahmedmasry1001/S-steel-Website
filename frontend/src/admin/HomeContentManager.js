@@ -358,6 +358,6 @@ const HomeContentManager = () => {
         </div>
       </div>
     );
-  };
+};
 
-  export default HomeContentManager;
+export default HomeContentManager;

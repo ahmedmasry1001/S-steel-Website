@@ -11,7 +11,10 @@ import {
   ArrowRightOnRectangleIcon,
   Bars3Icon,
   XMarkIcon,
-  HomeIcon
+  HomeIcon,
+  BuildingStorefrontIcon,
+  PresentationChartBarIcon,
+  UserGroupIcon
 } from '@heroicons/react/24/outline';
 
 const AdminLayout = ({ children }) => {
@@ -27,7 +30,11 @@ const AdminLayout = ({ children }) => {
     { name: 'Gallery', href: '/admin/gallery', icon: PhotoIcon },
     { name: 'Contacts', href: '/admin/contacts', icon: ChatBubbleLeftRightIcon },
     { name: 'Reports', href: '/admin/reports', icon: DocumentTextIcon },
-    { name: 'Settings', href: '/admin/settings', icon: CogIcon },
+    { name: 'Employees', href: '/admin/employees', icon: UserGroupIcon },
+    { name: 'Contact Cards', href: '/admin/contact-cards', icon: ChatBubbleLeftRightIcon },
+    { name: 'Company Settings', href: '/admin/company-settings', icon: BuildingStorefrontIcon },
+    { name: 'Dashboard Settings', href: '/admin/dashboard-settings', icon: PresentationChartBarIcon },
+    { name: 'System Settings', href: '/admin/settings', icon: CogIcon },
   ];
 
   const handleLogout = () => {

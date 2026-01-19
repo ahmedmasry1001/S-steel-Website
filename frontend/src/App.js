@@ -22,6 +22,10 @@ import ProjectManager from './admin/ProjectManager';
 import ProjectList from './admin/ProjectList';
 import ContactList from './admin/ContactList';
 import HomeContentManager from './admin/HomeContentManager';
+import CompanySettings from './admin/CompanySettings';
+import DashboardSettings from './admin/DashboardSettings';
+import EmployeeManagement from './admin/EmployeeManagement';
+import ContactCardsManagement from './admin/ContactCardsManagement';
 
 function App() {
   return (
@@ -46,6 +50,10 @@ function App() {
         <Route path="/admin/gallery" element={<AdminLayout><ProjectList /></AdminLayout>} />
         <Route path="/admin/reports" element={<AdminLayout><AdminDashboardCompact /></AdminLayout>} />
         <Route path="/admin/settings" element={<AdminLayout><AdminDashboardCompact /></AdminLayout>} />
+        <Route path="/admin/company-settings" element={<AdminLayout><CompanySettings /></AdminLayout>} />
+        <Route path="/admin/dashboard-settings" element={<AdminLayout><DashboardSettings /></AdminLayout>} />
+        <Route path="/admin/employees" element={<AdminLayout><EmployeeManagement /></AdminLayout>} />
+        <Route path="/admin/contact-cards" element={<AdminLayout><ContactCardsManagement /></AdminLayout>} />
       </Routes>
       <ToastContainer
         position="top-right"

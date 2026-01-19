@@ -21,6 +21,48 @@ const MainLayout = ({ children, currentPage = "home" }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [currentPageData, setCurrentPageData] = useState(1);
   const [itemsPerPage] = useState(12); // 3 rows × 4 columns
+  const [footerInfo, setFooterInfo] = useState(null);
+  const [footerLoading, setFooterLoading] = useState(true);
+
+  // Load footer info from API
+  useEffect(() => {
+    const loadFooterInfo = async () => {
+      try {
+        const response = await fetch('/api/company-info');
+        if (response.ok) {
+          const data = await response.json();
+          console.log('✓ MainLayout Footer API Data loaded:', data);
+          
+          const footerData = {
+            footer_address: data.footer_address || 'N/A',
+            footer_phone: data.footer_phone || 'N/A',
+            footer_fax: data.footer_fax || 'N/A',
+            footer_email: data.footer_email || 'N/A',
+            footer_website: data.footer_website || 'N/A',
+            footer_facebook: data.footer_facebook || '',
+            footer_twitter: data.footer_twitter || '',
+            footer_instagram: data.footer_instagram || '',
+            footer_linkedin: data.footer_linkedin || '',
+            footer_certification_iso: data.footer_certification_iso === true || data.footer_certification_iso === 'true',
+            footer_certification_osha: data.footer_certification_osha === true || data.footer_certification_osha === 'true',
+            footer_certification_aws: data.footer_certification_aws === true || data.footer_certification_aws === 'true'
+          };
+          
+          setFooterInfo(footerData);
+        } else {
+          console.error('✗ Footer API response not ok:', response.status);
+          setFooterInfo(null);
+        }
+      } catch (error) {
+        console.error('✗ Error loading footer info:', error);
+        setFooterInfo(null);
+      } finally {
+        setFooterLoading(false);
+      }
+    };
+
+    loadFooterInfo();
+  }, []);
 
   // Navigation structure
   const topMenuCategories = [
@@ -224,15 +266,21 @@ const MainLayout = ({ children, currentPage = "home" }) => {
       <footer className="bg-gradient-to-r from-purple-700 to-purple-800 text-white py-8">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            {/* Contact Info */}
+            {/* Contact Info - Dynamic from API */}
             <div>
               <h3 className="font-bold text-lg mb-4">Contact Information</h3>
               <div className="space-y-2 text-purple-100">
-                <p>📍 123 Steel Industry Blvd, Industrial City</p>
-                <p>📞 +1 (555) 123-4567</p>
-                <p>📠 +1 (555) 123-4568</p>
-                <p>📧 info@s-steel.com</p>
-                <p>🌐 www.s-steel.com</p>
+                {!footerLoading && footerInfo ? (
+                  <>
+                    <p>📍 {footerInfo.footer_address || 'N/A'}</p>
+                    <p>📞 {footerInfo.footer_phone || 'N/A'}</p>
+                    <p>📠 {footerInfo.footer_fax || 'N/A'}</p>
+                    <p>📧 {footerInfo.footer_email || 'N/A'}</p>
+                    <p>🌐 {footerInfo.footer_website || 'N/A'}</p>
+                  </>
+                ) : (
+                  <p>Loading contact information...</p>
+                )}
               </div>
             </div>
 
@@ -259,19 +307,29 @@ const MainLayout = ({ children, currentPage = "home" }) => {
               </ul>
             </div>
 
-            {/* Social & Certifications */}
+            {/* Social & Certifications - Dynamic from API */}
             <div>
               <h3 className="font-bold text-lg mb-4">Follow Us</h3>
               <div className="flex space-x-4 mb-4">
-                <a href="#" className="bg-purple-600 p-2 rounded-lg hover:bg-purple-500 transition-colors">📘</a>
-                <a href="#" className="bg-purple-600 p-2 rounded-lg hover:bg-purple-500 transition-colors">🐦</a>
-                <a href="#" className="bg-purple-600 p-2 rounded-lg hover:bg-purple-500 transition-colors">📷</a>
-                <a href="#" className="bg-purple-600 p-2 rounded-lg hover:bg-purple-500 transition-colors">💼</a>
+                {!footerLoading && footerInfo && (
+                  <>
+                    {footerInfo.footer_facebook && <a href={footerInfo.footer_facebook} target="_blank" rel="noopener noreferrer" className="bg-purple-600 p-2 rounded-lg hover:bg-purple-500 transition-colors">📘</a>}
+                    {footerInfo.footer_twitter && <a href={footerInfo.footer_twitter} target="_blank" rel="noopener noreferrer" className="bg-purple-600 p-2 rounded-lg hover:bg-purple-500 transition-colors">🐦</a>}
+                    {footerInfo.footer_instagram && <a href={footerInfo.footer_instagram} target="_blank" rel="noopener noreferrer" className="bg-purple-600 p-2 rounded-lg hover:bg-purple-500 transition-colors">📷</a>}
+                    {footerInfo.footer_linkedin && <a href={footerInfo.footer_linkedin} target="_blank" rel="noopener noreferrer" className="bg-purple-600 p-2 rounded-lg hover:bg-purple-500 transition-colors">💼</a>}
+                  </>
+                )}
               </div>
               <div className="text-purple-100 text-sm">
-                <p>✅ ISO 9001:2015 Certified</p>
-                <p>✅ OSHA Compliant</p>
-                <p>✅ AWS Certified Welders</p>
+                {!footerLoading && footerInfo ? (
+                  <>
+                    {footerInfo.footer_certification_iso && <p>✅ ISO 9001:2015 Certified</p>}
+                    {footerInfo.footer_certification_osha && <p>✅ OSHA Compliant</p>}
+                    {footerInfo.footer_certification_aws && <p>✅ AWS Certified Welders</p>}
+                  </>
+                ) : (
+                  <p>Loading certifications...</p>
+                )}
               </div>
             </div>
           </div>
