@@ -18,6 +18,23 @@ const Navbar = () => {
 
   return (
     <>
+      {/* Top Logo Bar */}
+      <div className="bg-gradient-to-r from-steel-blue to-steel-blue-light py-3 px-4 shadow-md">
+        <div className="container flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <img 
+              src="/s-steel-logo.png" 
+              alt="S-Steel Logo" 
+              className="h-16 w-16 object-contain"
+            />
+            <div>
+              <h1 className="text-white font-bold text-lg hidden sm:block">S-Steel Construction</h1>
+              <p className="text-gray-200 text-xs hidden sm:block">Professional Steel Solutions</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Main Navigation */}
       <nav className="bg-white shadow-lg sticky top-0 z-50 border-b-2 border-industrial-orange">
         <div className="container">

@@ -149,12 +149,14 @@ const MainLayout = ({ children, currentPage = "home" }) => {
                 <p className="text-xs text-steel-gray">Professional Steel Solutions</p>
               </div>
             </Link>
-            
-            <div className="flex items-center space-x-4">
-              <div className="text-right text-sm text-steel-gray">
-                <p>📞 +1 (555) 123-4567</p>
-                <p>📧 info@s-steel.com</p>
-              </div>
+
+            {/* Company Logo on Right */}
+            <div className="flex items-center gap-4">
+              <img 
+                src="/s-steel-logo.png" 
+                alt="S-Steel Logo" 
+                className="h-24 w-24 object-contain drop-shadow-md hover:drop-shadow-lg transition-all"
+              />
             </div>
           </div>
 
