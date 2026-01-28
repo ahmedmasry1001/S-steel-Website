@@ -5,7 +5,6 @@ import {
   HomeIcon,
   BuildingOfficeIcon,
   WrenchScrewdriverIcon,
-  PhotoIcon,
   PhoneIcon,
   InformationCircleIcon,
   ChevronDownIcon,
@@ -64,6 +63,32 @@ const MainLayout = ({ children, currentPage = "home" }) => {
     loadFooterInfo();
   }, []);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      // Check if click is outside the dropdown menu
+      const dropdownMenus = document.querySelectorAll('[data-dropdown-menu]');
+      const isClickInsideDropdown = Array.from(dropdownMenus).some(menu => 
+        menu.contains(event.target)
+      );
+      
+      // Also check if click is on the dropdown buttons
+      const dropdownButtons = document.querySelectorAll('[data-dropdown-button]');
+      const isClickOnButton = Array.from(dropdownButtons).some(button => 
+        button.contains(event.target)
+      );
+      
+      if (!isClickInsideDropdown && !isClickOnButton && activeDropdown) {
+        setActiveDropdown(null);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [activeDropdown]);
+
   // Navigation structure
   const topMenuCategories = [
     {
@@ -118,7 +143,6 @@ const MainLayout = ({ children, currentPage = "home" }) => {
     { name: 'Dashboard', path: '/', icon: HomeIcon },
     { name: 'All Projects', path: '/projects', icon: BuildingOfficeIcon },
     { name: 'Services', path: '/services', icon: WrenchScrewdriverIcon },
-    { name: 'Gallery', path: '/gallery', icon: PhotoIcon },
     { name: 'About Us', path: '/about', icon: InformationCircleIcon },
     { name: 'Contact', path: '/contact', icon: PhoneIcon }
   ];
@@ -155,7 +179,7 @@ const MainLayout = ({ children, currentPage = "home" }) => {
               <img 
                 src="/s-steel-logo.png" 
                 alt="S-Steel Logo" 
-                className="h-24 w-24 object-contain drop-shadow-md hover:drop-shadow-lg transition-all"
+                className="h-48 w-48 object-contain drop-shadow-md hover:drop-shadow-lg transition-all"
               />
             </div>
           </div>
@@ -166,6 +190,7 @@ const MainLayout = ({ children, currentPage = "home" }) => {
               {topMenuCategories.map((category) => (
                 <div key={category.id} className="relative">
                   <button
+                    data-dropdown-button
                     onClick={() => toggleDropdown(category.id)}
                     className="flex items-center space-x-2 px-4 py-2 text-steel-gray hover:text-industrial-orange transition-all duration-200 rounded-lg hover:bg-gray-50"
                   >
@@ -181,6 +206,7 @@ const MainLayout = ({ children, currentPage = "home" }) => {
                   <AnimatePresence>
                     {activeDropdown === category.id && (
                       <motion.div
+                        data-dropdown-menu
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}

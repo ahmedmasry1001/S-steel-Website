@@ -91,6 +91,13 @@ const ContactList = () => {
           )
         );
         toast.success('Contact status updated');
+      } else if (response.status === 401) {
+        toast.error('Session expired. Please login again.');
+      } else if (response.status === 404) {
+        toast.error('Contact not found');
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.error || 'Failed to update contact status');
       }
     } catch (error) {
       console.error('Error updating contact status:', error);
@@ -112,6 +119,13 @@ const ContactList = () => {
       if (response.ok) {
         setContacts(prev => prev.filter(contact => contact.id !== contactId));
         toast.success('Contact deleted successfully');
+      } else if (response.status === 401) {
+        toast.error('Session expired. Please login again.');
+      } else if (response.status === 404) {
+        toast.error('Contact not found');
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.error || 'Failed to delete contact');
       }
     } catch (error) {
       console.error('Error deleting contact:', error);
@@ -327,7 +341,7 @@ const ContactList = () => {
                   Close
                 </button>
                 <a
-                  href={`mailto:${selectedContact.email}?subject=Re: ${selectedContact.subject}`}
+                  href={`mailto:${selectedContact.email}?subject=${encodeURIComponent(`Re: ${selectedContact.subject}`)}`}
                   className="btn btn-primary text-sm"
                 >
                   Reply via Email

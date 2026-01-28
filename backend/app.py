@@ -634,6 +634,65 @@ def get_contacts():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/admin/contacts/<int:contact_id>/status', methods=['PATCH'])
+@jwt_required()
+def update_contact_status(contact_id):
+    """Update contact status (new, replied, archived)"""
+    try:
+        data = request.get_json()
+        new_status = data.get('status')
+        
+        if not new_status or new_status not in ['new', 'replied', 'archived']:
+            return jsonify({'error': 'Invalid status'}), 400
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute(
+            'UPDATE contacts SET status = ? WHERE id = ?',
+            (new_status, contact_id)
+        )
+        
+        if cursor.rowcount == 0:
+            conn.close()
+            return jsonify({'error': 'Contact not found'}), 404
+        
+        conn.commit()
+        
+        # Fetch and return updated contact
+        contact = conn.execute(
+            'SELECT * FROM contacts WHERE id = ?',
+            (contact_id,)
+        ).fetchone()
+        conn.close()
+        
+        return jsonify(dict(contact))
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/contacts/<int:contact_id>', methods=['DELETE'])
+@jwt_required()
+def delete_contact(contact_id):
+    """Delete a contact"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute('DELETE FROM contacts WHERE id = ?', (contact_id,))
+        
+        if cursor.rowcount == 0:
+            conn.close()
+            return jsonify({'error': 'Contact not found'}), 404
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'message': 'Contact deleted successfully'})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 # File serving
 @app.route('/uploads/<path:filename>')
 def uploaded_file(filename):
